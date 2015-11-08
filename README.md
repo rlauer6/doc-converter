@@ -3,20 +3,32 @@ This the README file for the `doc-converter` project.  The
 things, converting .xls[x] and .doc[x] documents to PDF.  The project
 produces two RPMs:
 
-`doc-converter-1.0.0-0.rpm`
-`doc-converter-client-1.0.0-0.rpm`
+- `doc-converter-1.0.0-0.rpm`
+- `doc-converter-client-1.0.0-0.rpm`
 
-...or some other versioned RPMs.
+...or some other versioned RPMs. Once more, this project's target is
+an RPM that you can then use to create a document conversion server.
+In other words, you build an RPM then follow some additional
+instructions in order to create the server.
 
-The document conversion process uses LibreOffice's "headless" mode in
-a command line fashion.  Yes, I know you can run this as a server, but
-my experience with that has not been positive.
+If you don't want to create the RPMs you can try to download copies of
+the RPMs (no guarantees that they actually work however) from:
+
+`https://s3.amazonaws.com/doc-converter/doc-converter-1.0.0-0.noarch.rpm`
+`https://s3.amazonaws.com/doc-converter/doc-converter-client-1.0.0-0.noarch.rpm`
+
+# Description
+
+Behind the scenes, the document conversion process uses LibreOffice's
+*headless* mode in a command line fashion.  Yes, I know you can run
+LibreOffice as a server in headless mode, but my experience with that
+has not been all that positive, hence this conversion process pays the
+penalty of a fork and exec to execute `soffice` from the command line.
 
 See `man doc-converter` for more details.
 
 See `/opt/libreoffice50/program/soffice --help` for more details on
 converting documents.
-
 
 # Bugs/Carps/Suggestions
 
@@ -26,9 +38,12 @@ Rob Lauer - <rlauer6@comcast.net>
 
 ## Summary
 
-- an EC2 instance
+- an EC2 instance running in a publicly available subnet
+- an IAM role that has permissions to some bucket
 - an S3 bucket
 - LibreOffice 5
+- RPM build tools
+  - `$ sudo yum install rpm-build`
 
 ## Details
 
@@ -41,6 +56,9 @@ stack template.  A *CloudFormation script*
 part of the `doc-converter-client` RPM.  To use the stack creation
 script you'll want to make sure that:
 
+* ...you're launching the stack in a subnet that has access to the
+internet.  This is necessary so that the required assets can be
+retrieved and installed.
 * ...you take a look at the defaults defined in the CloudFormation JSON
 *script* and make the necessary modifications or override them on the
 *command line when you run the `libreoffice-create-stack` bash script.
@@ -48,7 +66,7 @@ script you'll want to make sure that:
   * Keyname
   * SecurityGroup
   * Role
-* You have an IAM role configured that will allow your EC2 instance
+* ...you have an IAM role configured that will allow your EC2 instance
 and your client to read & write to an S3 bucket.  The bucket will be
 used by your client and the `doc-converter` service to store
 documents.  The policy for an appropriate IAM role might look like this:
@@ -89,21 +107,24 @@ See `libreoffice-doc-converter.json`.
 
 See `libreoffice-create-stack`
 
-To create an EC2 instance using the provide script, try this:
+Assuming you've defined an IAM role called `bucket-write`, to create
+an EC2 instance using the provide script, try this:
 
 ```
  $ libreoffice-create-stack -?
 
  $ libreoffice-create-stack -t /usr/share/doc-converter/libreoffice-doc-converter.json \
                             -i t2.micro \
-                            -R bucket-writer
+                            -R bucket-writer \
+                            -u https://s3.amazonaws.com/doc-converter/doc-converter.1.0.0-0.noarch.rpm
 ```
 
 ### LibreOffice 5
 
 The stack creation process mentioned above will grab a version of
 LibreOffice 5 and install that during the instance creation.  The
-LibreOffice 5 tar ball is retrieved from a known location along with
+LibreOffice 5 tar ball is retrieved from a known location (the last
+known good location on the LibreOffice website) along with
 other assets required for to make this process work correctly.
 
 *The location of these assets might change, so you might have to
@@ -112,30 +133,108 @@ modify the CloudFormation specification.*
 ### Apache 2.2+
 
 An Apache web server, listening on port 80 is also created as part of
-the stack creation process.
-
-An Apache configuration file is also created and installed as:
+the stack creation process.  An Apache configuration file is 
+created and installed as:
 
 `/etc/httpd/conf.d/doc-converter.conf`
-
-Feel free to edit/rename as you see fit.
 
 ### `Amazon::S3`
 
 A modified copy of the `Amazon::S3` Perl module is included in this
 project.  I apologize in advance to those who are offended by the fact
 that I did not simply push my change to that project, however that
-CPAN project appears to be either deprecated or on life support.
-
+CPAN project appears to be either deprecated or on life support in
+favor of more *modern* versions of Perl S3 interfaces.
 
 ### LibreOffice Fixups
 
-OOXMLRecalcMode - sets LibreOffice so spreadsheets are recalculated on
-load.  This is required if you want your formulas to be calculated
-before PDFs are created.
+A Perl script, `fix-OOXMLRecalcMode` is executed as part of the stack
+creation process.  It sets a LibreOffice configuration value so
+spreadsheets are recalculated when they are loaded.  This is required
+if you want your formulas to be calculated before PDFs are created.
 
 ### ghostscript fixups (Japanese Fonts)
 
-Some issues have occurred creating .png files from
-PDFs that require Japanese fonts.  I've pushed a fix to the
-`/etc/ghostscript/8.70/cidfmap.local` file.  YMMV.
+Some issues have been identified when attempting to create .png file
+from PDFs that require Japanese fonts.  I've pushed a fix to the
+`/etc/ghostscript/8.70/cidfmap.local` file, however if you really are
+using Japanese fonts, this fix may not work for you. YMMV.
+
+# Building an RPM
+
+Building an RPM can be done using the `build` script provided. Make
+sure you've installed the `rpm-build` package and have a working RPM
+build directory.
+
+```
+$ ./build
+```
+
+...or to build the RPMs and install them on in your S3 bucket...
+
+```
+$ ./build bucket-name
+```
+
+You'll want to install the RPMs in an accessible place so the
+CloudFormation script can grab them during the stack creation.  You
+specify where the RPMs were installed using the -u option of the
+`libreoffice-create-stack` script.
+
+```
+$ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
+                           -t /usr/share/doc-converter/libreoffice-doc-converter.json \
+                           -u https://s3.amazonaws.com/mybucket/doc-converter-1.0.0-0.noarch.rpm
+```
+
+On the other hand you can just throw your hands up and so say, "oh
+bloody hell", and see what the dang CloudFormation template is trying
+to do in that wonky UserData section:
+
+```
+"UserData"           : { "Fn::Base64" : { "Fn::Join" : ["", [
+    "#!/bin/bash -v\n",
+    "\n",
+    "# Helper function\n",
+    "function error_exit\n",
+    "{\n",
+    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", { "Ref" : "WaitHandle" }, "'\n",
+    "  exit 1\n",
+    "}\n",
+    "yum update -y\n",
+    "# Install packages\n",
+    "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocServer ", "-c Config ",
+    "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
+    "\n",
+    "# download LibreOffice 5, etc.\n",
+    "cd /tmp\n",
+    "wget ", { "Ref" : "RPMUrl" }," /tmp\n",
+    "yum install -y /tmp/doc-converter-1.0.0-0.noarch.rpm\n",
+    "wget http://download.documentfoundation.org/libreoffice/stable/5.0.3/rpm/x86_64/LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz -P /tmp\n",
+    "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
+    "test -e LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz && tar xfvz LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz\n",
+    "cd LibreOffice_5.0.3.2_Linux_x86-64_rpm/RPMS/\n", 
+    "mv libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm.sav\n",
+    "rpm -Uvh *.rpm\n",
+    "\n",
+    "# set OO RecalcMode to true\n",
+    "perl /usr/libexec/fix-OOXMLRecalcMode -i /opt/libreoffice5.0/share/registry/main.xcd -p\n",
+    "chmod o+r /opt/libreoffice5.0/share/registry/main.xcd\n",
+    "/sbin/service httpd restart\n",
+    "\n",
+    "/opt/aws/bin/cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "WaitHandle" }, "'\n"
+]]}}
+```
+
+In that case, you need to do the following things:
+
+1. Create an EC2 instance
+2. Install the *necessary* RPM packages as described in the `doc-converter.spec` file.
+3. Install LibreOffice 5.0
+4. Install the `doc-converter` package
+5. Configure & restart Apache
+6. Apply patches to the LibreOffice config and ghostscript files
+
+Sure, you can do all those things manually, but the point of all the
+*automation* is so that you can create multiple instances of the
+document converter.
