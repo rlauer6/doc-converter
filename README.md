@@ -126,6 +126,8 @@ project.
 LibreOffice Fixups
 ==================
 
-Japanese Fonts
+Japanese Fonts - some issues have occurred creating .png files from
+PDFs that require Japanese fonts.
 
-OOXMLRecalcMode
+OOXMLRecalcMode - sets LibreOffice so spreadsheets are recalculated on
+load.  This is required if you want your formulas to be calculated.
