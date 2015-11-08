@@ -36,15 +36,22 @@ Rob Lauer - <rlauer6@comcast.net>
 
 The server that is used for the document converter is assumed to be an
 AWS EC2 instance prepared with the `libreoffice-doc-converter.json`
-stack template.  A CloudFormation script to create such a stack is
-included as part of the `doc-converter-client` RPM.  To use the stack
-creation stack you'll want to make sure that:
+stack template.  A *CloudFormation script*
+(`libreoffice-create-stack') to create such a stack is included as
+part of the `doc-converter-client` RPM.  To use the stack creation
+script you'll want to make sure that:
 
+* ...you take a look at the defaults defined in the CloudFormation JSON
+*script* and make the necessary modifications or override them on the
+*command line when you run the `libreoffice-create-stack` bash script.
+  * Subnet
+  * Keyname
+  * SecurityGroup
+  * Role
 * You have an IAM role configured that will allow your EC2 instance
-to read & write to an S3 bucket.  The bucket will be used by
-your client and the doc-converter server to store documents.  The
-policy for an appropriate role might look like this:
-
+and your client to read & write to an S3 bucket.  The bucket will be
+used by your client and the `doc-converter` service to store
+documents.  The policy for an appropriate IAM role might look like this:
 ```
  {
      "Version": "2012-10-17",
@@ -67,36 +74,37 @@ policy for an appropriate role might look like this:
                  "s3:ListBucket"
              ],
              "Resource": [
-                 "arn:aws:s3:::treasurersbriefcase-development",
-                 "arn:aws:s3:::treasurersbriefcase-development/doc-converter/*"
+                 "arn:aws:s3:::mybucket",
+                 "arn:aws:s3:::mybucket/doc-converter/*"
              ]
          }
      ]
  }
 ```
-
 This policy will allow your EC2 instance, and hence the
-`doc-converter` service to read and write to a specific directory
-within your bucket.
+`doc-converter` service to read and write to a specific directory (and
+sub-directories) within your bucket.
 
 See `libreoffice-doc-converter.json`.
 
 See `libreoffice-create-stack`
 
+To create an EC2 instance using the provide script, try this:
+
 ```
+ $ libreoffice-create-stack -?
+
  $ libreoffice-create-stack -t /usr/share/doc-converter/libreoffice-doc-converter.json \
                             -i t2.micro \
                             -R bucket-writer
-
- $ libreoffice-create-stack -?
 ```
 
 ### LibreOffice 5
 
 The stack creation process mentioned above will grab a version of
-LibreOffice 5 shown to work and install that during instance creation.
-The LibreOffice 5 tar ball is retrieved from a known location along
-with other assets required for to make this process work correctly.
+LibreOffice 5 and install that during the instance creation.  The
+LibreOffice 5 tar ball is retrieved from a known location along with
+other assets required for to make this process work correctly.
 
 *The location of these assets might change, so you might have to
 modify the CloudFormation specification.*
