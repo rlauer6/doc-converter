@@ -1,0 +1,6 @@
+/MSGothic  << /FileType /TrueType /Path (/usr/share/fonts/ipa-gothic/ipag.ttf) /CSI [(Japan1) 2] >> ;
+/MSMincho << /FileType /TrueType /Path (/usr/share/fonts/ipa-mincho/ipam.ttf) /CSI [(Japan1) 2] >> ;
+
+/Adobe-Japan1           /MSGothic ;
+/Adobe-Japan2           /MSGothic ;
+
