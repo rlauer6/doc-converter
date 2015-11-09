@@ -4,7 +4,8 @@ readmedir = $(datadir)/doc-converter
 
 dist_readme_DATA = \
     README.md \
-    cidfmap.local
+    cidfmap.local \
+	release
 
 ACLOCAL_AMFLAGS = -I autotools
 
