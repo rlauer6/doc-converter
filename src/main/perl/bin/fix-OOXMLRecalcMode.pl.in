@@ -43,7 +43,7 @@ on load> setting for OOXML documents I< for some reason>.
 
 After a little bit more hunting I discovered that it was possible to
 reset that flag in LOE<039>s configuration file
-(F</opt/libreoffice4.3/share/registry/main.xcd).  Keep in mind the
+(F</opt/libreoffice4.3/share/registry/main.xcd>).  Keep in mind the
 path to this file may change with versions and where LO happens to be
 currently installed.
 
