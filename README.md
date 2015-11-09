@@ -33,7 +33,8 @@ repository.  Both the `doc-converter` client and server use the S3
 bucket for storing documents.  In ASCII art, the architecture looks
 something like this:
 
-```       +------<<< S3 bucket policy >>>-------+
+```
+       +------<<< S3 bucket policy >>>-------+
           |                                     |
           |          s3://mybucket              |
           |                                     |
@@ -54,6 +55,7 @@ something like this:
      | Client | $ doc2pdf-client -b mybucket -h 10.0.1.81 test.xlsx
      |        |
      +--------+
+
 ```
 
 Your clients push documents to your S3 bucket and then request a
