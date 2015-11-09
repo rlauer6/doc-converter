@@ -1,0 +1,115 @@
+%define project_base     @PACKAGE_NAME@
+%define project_version  @VERSION@
+%define pkgname          %{project_base}-%{project_version}
+%define buildroot        %{_tmppath}/%{pkgname}-%(%{__id_u} -n)
+%define release	        @PROJECT_RELEASE@ 
+
+Name:     %{project_base}
+Version:  %(echo @VERSION@ | awk -F- '{print $1}')
+Release:  @PROJECT_RELEASE@
+Vendor:   Robert C. Lauer
+Source:   %{project_base}-%{project_version}.tar.gz
+
+BuildRoot:  %{buildroot}
+Summary:    doc-converter
+License:    GNU General Pubilc License v3.0
+Group:      Applications/System
+
+BuildRequires:   automake
+BuildRequires:   ctags
+BuildRequires:   rpm-build
+
+Provides: perl(Amazon::S3)
+Provides: perl(Amazon::S3::Bucket)
+
+Requires: ImageMagick
+Requires: perl(XML::Twig)
+Requires: perl(Class::Accessor::Fast)
+Requires: perl(Date::Manip::Date)
+Requires: httpd < 2.4
+Requires: ghostscript
+Requires: mesa-libGL
+Requires: libXinerama
+Requires: cairo
+Requires: dbus-glib
+Requires: cups
+Requires: dejavu-fonts-common
+Requires: dejavu-sans-fonts
+Requires: dejavu-sans-mono-fonts
+Requires: dejavu-serif-fonts
+Requires: fontpackages-filesystem
+Requires: liberation-fonts-common
+Requires: liberation-mono-fonts
+Requires: liberation-sans-fonts
+Requires: liberation-serif-fonts
+Requires: xorg-x11-fonts-75dpi
+Requires: xorg-x11-fonts-100dpi
+Requires: ipa-gothic-fonts
+Requires: ipa-mincho-fonts 
+
+BuildArch:  noarch
+
+%define pkgname %{project_base}-%{project_version}
+
+%description
+
+doc-converter is an HTTP service that employs LibreOffice in
+'headless' mode to convert documents to PDF.  Additionally, the
+service will create thumbnails and produce meta data regarding
+documents that are converted by this service.
+
+See `/usr/share/doc-converter/README for more detailed information
+about the service.
+
+%prep
+%setup -q -n %{pkgname}
+
+%build
+rm -rf %{buildroot}
+
+./configure --with-apache-vhost-server='' \
+            --with-apache-vhost-dir=/var/www \
+            --with-apache-domain-name='' \
+            --prefix=/usr \
+            --with-libreofficedir=/opt/libreoffice5.0
+
+%install
+make DESTDIR=%{buildroot} install
+
+%files
+%defattr(-,root,root)
+/usr/bin/doc2pdf
+
+/usr/libexec/fix-OOXMLRecalcMode
+
+/usr/share/man/man1/fix-OOXMLRecalcMode.1dc.gz
+/usr/share/man/man1/doc-converter.1dc.gz
+/usr/share/doc-converter/README.md
+/usr/share/doc-converter/cidfmap.local
+
+/usr/local/share/perl5
+
+%defattr(-,apache,apache)
+/etc/httpd/conf.d/doc-converter.conf
+
+/var/www/cgi-bin/doc-converter.cgi
+/usr/share/doc-converter/doc-converter.cfg
+
+%package client
+
+Summary:      @PACKAGE@-client
+Group:        doc-converter
+
+%description client
+Client components for the doc-converter
+
+%files client
+%defattr(-, root, root)
+/usr/bin/libreoffice-create-stack
+
+/usr/libexec/doc2pdf-client
+
+/usr/share/doc-converter/libreoffice-doc-converter.json
+/usr/share/man/man1/doc2pdf-client.1dc.gz
+
+/usr/local/share/perl5

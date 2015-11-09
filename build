@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# script to build RPM
+
+fatal() {
+    echo "$1"
+    exit 1;
+}
+
+# find RPM working directory
+topdir=$(rpmbuild --showrc | cut -f 2,3 -d' '| grep ^_topdir | cut -f 2)
+
+if ! test -d "$topdir/RPMS"; then
+    fatal "no RPM working directory"
+fi
+
+# build the RPM and update the S3 bucket?
+./bootstrap || fatal "can't bootstrap"
+
+./configure --prefix=/usr \
+            --with-libreofficedir=/opt/libreoffice5.0 || fatal "can't configure"
+
+make dist || fatal "can't create tar ball"
+
+rpmbuild  -tb $(ls -1  doc-converter-*.tar.gz | tail -1) || fatal "can't create RPM"
+
+# build the RPM and update the S3 bucket
+test -n "$1" && BUCKET="$1"
+
+# sync bucket, if bucket provide
+if test -n "$BUCKET"; then
+
+    PERMISSION="--grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers"
+
+    if test -n "$(ls -1 $topdir/RPMS/noarch/doc-converter*.rpm 2>/dev/null)"; then
+	aws s3 sync  --exclude="*" --include="doc-converter*.rpm" ~/rpm/RPMS/noarch/ s3://$BUCKET/ $PERMISSION
+	aws s3 ls s3://$BUCKET/
+    fi
+else
+    echo "...skipping bucket update" 
+    ls -alrt $topdir/RPMS/noarch/doc-converter*.rpm
+fi

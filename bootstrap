@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Usage:
+#   bootstrap [ AUTORECONF_ARG ... ]
+#
+# Example 1:
+#   $ ./bootstrap
+#
+# Example 2:
+#   $ ./bootstrap --verbose
+#
+# Example 3:
+#   $ ./bootstrap --debug
+
+declare -r PROG='bootstrap'
+
+_run_on_dir="$(readlink -f "$(dirname "${0}")")"
+if test $? -ne 0; then
+    printf "${PROG} (ERROR): was unable to determine realpath of prog \"%s\"\n" \
+      "$0" 1>&2
+    exit 1
+fi
+
+# sanity check that our configure.ac file exists
+_configure_ac="${_run_on_dir}/configure.ac"
+test -f "${_configure_ac}" || {
+    printf "${PROG} (ERROR): file does not exist: \"%s\"\n" "${_configure_ac}" 1>&2
+    exit 1
+}
+
+# sanity check that our include dir exists
+_include_dir="${_run_on_dir}/autotools"
+test -d "${_include_dir}" || {
+    printf "${PROG} (ERROR): m4 macro include directory does not exist: \"%s\"\n" \
+      "${_include_dir}" 1>&2
+    exit 1
+}
+
+
+set -x
+
+# From autoreconf(1):
+#   "The environment  variables  AUTOCONF,  AUTOHEADER,  AUTOMAKE,  ACLOCAL,
+#    AUTOPOINT, LIBTOOLIZE are honored."
+#
+
+# We use these to allow us to easily use the correct versions of the GNU
+# autotools. Note: On some systems, the tools are /only/ installed with their
+# version number suffixes, so the default names, such as 'aclocal' won't work.
+export ACLOCAL='aclocal-1.11'
+export AUTOMAKE='automake-1.11'
+
+# --force: consider all files obsolete (ignores timestamps)
+# --warnings=all
+autoreconf \
+           "--include=${_include_dir}" \
+           "$@" \
+           "${_configure_ac}"
