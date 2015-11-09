@@ -52,7 +52,8 @@ I would be especially interested in anyone that has figure out whether:
 - LibreOffice 5
 - RPM build tools
   - `$ sudo yum install rpm-build`
-- autotools
+- automake
+- autoconf
 
 ## Details
 
@@ -181,6 +182,23 @@ Some issues have been identified when attempting to create .png file
 from PDFs that require Japanese fonts.  I've pushed a fix to the
 `/etc/ghostscript/8.70/cidfmap.local` file, however if you really are
 using Japanese fonts, this fix may not work for you. YMMV.
+
+# Getting Started
+
+Make sure you have installed:
+
+* automake
+* autoconf
+* rpm-build
+
+To get started, download the project and run the bootstrap script.
+
+```
+$ wget https://github.com/rlauer6/doc-converter/archive/master.zip
+$ unzip master.zip
+$ cd doc-converter-master
+$ ./bootstrap
+```
 
 # Building an RPM
 
