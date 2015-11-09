@@ -52,6 +52,7 @@ I would be especially interested in anyone that has figure out whether:
 - LibreOffice 5
 - RPM build tools
   - `$ sudo yum install rpm-build`
+- autotools
 
 ## Details
 
