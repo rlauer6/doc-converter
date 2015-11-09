@@ -103,13 +103,12 @@ AC_SUBST([do_subst_command])
 AC_CONFIG_AUX_DIR([autotools])
 AC_CONFIG_MACRO_DIR([autotools])
 
-AM_INIT_AUTOMAKE([-Wall -Werror -Wno-override foreign tar-ustar])
+AM_INIT_AUTOMAKE([-Wall -Wno-override foreign tar-ustar])
 
 DFLT_MAINTAINER="rlauer6@comcast.net"
 AC_SUBST([DFLT_MAINTAINER])
 
-dnl AC_REVISION puts cvs revision in comment at top of generated 'configure'
-AC_REVISION([$Revision: 1.3 $])
+AC_REVISION(["1"])
 
 if ! test -e release; then
  PROJECT_RELEASE="0"
