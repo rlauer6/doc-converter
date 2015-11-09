@@ -227,9 +227,11 @@ $ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
                            -u https://s3.amazonaws.com/mybucket/doc-converter-1.0.0-0.noarch.rpm
 ```
 
-On the other hand you can just throw your hands up and so say, "oh
+## Alternate Build Procedure
+
+On the other hand you can just throw your hands up and say, "oh
 bloody hell", and see what the dang CloudFormation template is trying
-to do in that wonky UserData section and do it all by hand.
+to do in that wonky `UserData` section and do it all by hand.
 
 ```
 "UserData"           : { "Fn::Base64" : { "Fn::Join" : ["", [
