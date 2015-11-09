@@ -69,7 +69,7 @@ rm -rf %{buildroot}
 ./configure --with-apache-vhost-server='' \
             --with-apache-vhost-dir=/var/www \
             --with-apache-domain-name='' \
-            --enablep-rpm-build-mode \
+            --enable-rpm-build-mode \
 	    --sysconfdir=/etc \
             --prefix=/usr \
             --with-libreofficedir=/opt/libreoffice5.0
