@@ -78,11 +78,24 @@ the documents.  While this appears a bit more appealing
 architecturally, it introduces some complexity in figuring out exactly
 how a Lambda function can invoke LibreOffice!
 
-In the end, a simple Perl CGI that forks and executes LibreOffice from
-the command line, while a still a bit unsatisfying, does the trick.
+In the end, I decided to implement a very simple store and request
+model. The client stores the document to a bucket shared between the
+client and server and then explicitly tells the server to do
+something.  This model only required a small Perl CGI that forks and
+executes LibreOffice from the command line.  While a it unsatisfying
+from the elegance perspective it seems to do the trick reliably, if
+not quickly.
 
-I note these alternatives in the event someone out there has a niftier
-idea.
+While not sexy, it does support the use case I was actually interested
+in.  My client creates a document in an S3 bucket for archival and
+since I don't need the PDF or .png thumbnails right away, I'm not
+necessarily interested in waiting around for the server to complete
+those tasks.  It was sufficient for my client to store and request the
+conversion.  And I might have some other tasks for the server to
+perform on my files one day, so this model sort of made sense.
+
+I note alternative architectures for files conversions in the event
+someone out there has a niftier solution.
 
 # Description
 
@@ -439,3 +452,4 @@ See `man doc2pdf-client` for more details.
 # Finally...
 
 I think you have enough clues to proceed, but if not, drop me a note.
+
