@@ -140,7 +140,8 @@ known good location on the LibreOffice website) along with
 other assets required for to make this process work correctly.
 
 *The location of these assets might change, so you might have to
-modify the CloudFormation specification.*
+modify the CloudFormation specification.  Again, it is suggested you
+take a peek at the CloudFormation template.*
 
 ### Apache 2.2+
 
@@ -150,13 +151,18 @@ created and installed as:
 
 `/etc/httpd/conf.d/doc-converter.conf`
 
+There's nothing special about the configuration or the use of Apache.
+It was just quick and convenient.  You can probably make the
+`doc-converter.cgi` script work in other environments.
+
 ### `Amazon::S3`
 
 A modified copy of the `Amazon::S3` Perl module is included in this
 project.  I apologize in advance to those who are offended by the fact
-that I did not simply push my change to that project, however that
-CPAN project appears to be either deprecated or on life support in
-favor of more *modern* versions of Perl S3 interfaces.
+that I did not simply push my change (send the session token in the
+header) to that project, however that CPAN project appears to be
+either deprecated or on life support in favor of more *modern*, but
+far heavier versions of Perl S3 interfaces.
 
 ### LibreOffice Fixups
 
