@@ -14,25 +14,31 @@ instructions in order to create the server.
 If you don't want to create the RPMs you can try to download copies of
 the RPMs (no guarantees that they actually work however) from:
 
-`https://s3.amazonaws.com/doc-converter/doc-converter-1.0.0-0.noarch.rpm`
-`https://s3.amazonaws.com/doc-converter/doc-converter-client-1.0.0-0.noarch.rpm`
+`https://doc-converter.s3-website-us-east-1.amazonaws.com`
 
 # Description
 
 Behind the scenes, the document conversion process uses LibreOffice's
 *headless* mode in a command line fashion.  Yes, I know you can run
 LibreOffice as a server in headless mode, but my experience with that
-has not been all that positive, hence this conversion process pays the
-penalty of a fork and exec to execute `soffice` from the command line.
+method has not been all that positive, hence this HTTP based
+conversion process pays the penalty of a fork and exec to execute
+`soffice` from the command line.
 
-See `man doc-converter` for more details.
-
-See `/opt/libreoffice50/program/soffice --help` for more details on
+Once you install the `doc-converter` RPM, take a peek at `man
+doc-converter` for more details.  You can also take a look at
+`/opt/libreoffice50/program/soffice --help` for more details on
 converting documents.
 
-# Bugs/Carps/Suggestions
+# Reporting Bugs, Carping or Making Constructive Suggestions
 
 Rob Lauer - <rlauer6@comcast.net>
+
+I would be especially interested in anyone that has figure out whether:
+
+1. LibreOffice really can be used to support multiple connections
+2. Has gotten the pyuno interface to work successfully and reliably
+3. ...or has another method that makes more sense to create a reliable document creation service.
 
 # Requirements
 
