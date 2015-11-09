@@ -17,7 +17,7 @@ topdir=$(rpmbuild --showrc | cut -f 2,3 -d' '| grep ^_topdir | cut -f 2)
 test -d "$topdir/RPMS" || fatal "error: no RPM working directory"
 
 # build the RPM and update the S3 bucket?
-autoreconf --include=./autotool --force configure.ac || fatal "error: unable to initialize automake"
+autoreconf --include=./autotools --force configure.ac || fatal "error: unable to initialize automake"
 
 ./configure --prefix=/usr \
             --with-libreofficedir=/opt/libreoffice5.0 || fatal "error: unable to configure project"
