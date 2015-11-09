@@ -88,7 +88,7 @@ In the end, I decided to implement a very simple store and request
 model. The client stores the document to a bucket shared between the
 client and server and then explicitly tells the server to do
 something.  This model only required a small Perl CGI that forks and
-executes LibreOffice from the command line.  While a it unsatisfying
+executes LibreOffice from the command line.  While a bit unsatisfying
 from the elegance perspective it seems to do the trick reliably, if
 not quickly.
 
@@ -135,10 +135,9 @@ I would be especially interested in anyone that has figure out whether:
 - an IAM role that has permissions to some bucket
 - an S3 bucket
 - LibreOffice 5
-- RPM build tools
-  - `$ sudo yum install rpm-build`
-- automake
-- autoconf
+- RPM build tools (`rpm-build`)
+- `automake`
+- `autoconf`
 
 ## Details
 
