@@ -111,7 +111,12 @@ AC_SUBST([DFLT_MAINTAINER])
 dnl AC_REVISION puts cvs revision in comment at top of generated 'configure'
 AC_REVISION([$Revision: 1.3 $])
 
-PROJECT_RELEASE=0
+if ! test -e release; then
+ PROJECT_RELEASE="0"
+else
+  PROJECT_RELEASE=$(cat release)
+fi
+
 AC_SUBST([PROJECT_RELEASE])
 
 AC_PATH_PROG([PERL], [perl])
