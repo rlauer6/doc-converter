@@ -47,8 +47,8 @@ CLEANFILES = \
     $(GCONFIG) \
     doc-converter.cfg
 
-install-data-hook:
 if RPM_BUILD_MODE
 else
+install-data-hook:
 	[ $$(id -u) = "0" ] && chown -R $(apache_user):$(apache_group) $(DESTDIR)$(apache_sitedir) || true
 endif
