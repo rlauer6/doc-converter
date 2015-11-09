@@ -400,8 +400,6 @@ sub convert_document {
 
   my $url = sprintf("http://%s/converter/%s/%s/%s", @options{qw/host bucket document-id name/} );
 
-  logger($url);
-
   my $req = HTTP::Request->new(
 			       'POST', $url,
 			       [ 
