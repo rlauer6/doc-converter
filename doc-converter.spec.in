@@ -99,6 +99,7 @@ make DESTDIR=%{buildroot} install
 
 %package client
 
+Requires:     perl(Class::Accessor::Fast)
 Summary:      @PACKAGE@-client
 Group:        doc-converter
 
