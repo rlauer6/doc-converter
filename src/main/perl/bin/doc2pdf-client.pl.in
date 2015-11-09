@@ -382,8 +382,6 @@ sub get_status {
   my $req = HTTP::Request->new('GET' => $url);
   my $rsp = $ua->request( $req );
 
-  logger("$url " . Dumper $rsp);
-
   my $result;
   
   if ( $rsp->is_success ) {
