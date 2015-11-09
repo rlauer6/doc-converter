@@ -77,7 +77,7 @@
                     "\n",
 		    "# setup doc-converter repo and install package\n",
 		    "yum-config-manager --nogpgcheck --add-repo ", { "Ref" : "RPMUrl" },"\n",
-		    "yum install -y doc-converter\n",
+		    "yum install --nogpgcheck -y doc-converter\n",
 		    "# Adbobe Japanese font fix\n",
 		    "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
 		    "# download & install LibreOffice 5\n",
