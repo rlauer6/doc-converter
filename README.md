@@ -58,20 +58,24 @@ I would be especially interested in anyone that has figure out whether:
 The server that is used for the document converter is assumed to be an
 AWS EC2 instance prepared with the `libreoffice-doc-converter.json`
 stack template.  A *CloudFormation script*
-(`libreoffice-create-stack') to create such a stack is included as
-part of the `doc-converter-client` RPM.  To use the stack creation
-script you'll want to make sure that:
+(`libreoffice-create-stack`) is included to create such a stack is
+included as part of the `doc-converter-client` RPM.  To use the stack
+creation script you'll want to make sure that:
 
 * ...you're launching the stack in a subnet that has access to the
 internet.  This is necessary so that the required assets can be
 retrieved and installed.
-* ...you take a look at the defaults defined in the CloudFormation JSON
-*script* and make the necessary modifications or override them on the
-*command line when you run the `libreoffice-create-stack` bash script.
+
+* ...you take a look at the defaults defined in the CloudFormation
+JSON script and make the necessary modifications or override them on
+the command line when you run the `libreoffice-create-stack` bash
+script.  Pay attention to these parameters in the template:
+
   * Subnet
   * Keyname
   * SecurityGroup
   * Role
+
 * ...you have an IAM role configured that will allow your EC2 instance
 and your client to read & write to an S3 bucket.  The bucket will be
 used by your client and the `doc-converter` service to store
