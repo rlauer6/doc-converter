@@ -44,17 +44,17 @@ something like this:
       \  S3   /  -----------> |  EC2  o---{ IAM Role }
        \     /  <------------ |       |    ----------
         \___/  .pdf, .png     +-+-----+
-          ^                     +-- LibreOffice
-          |                     +-- ImageMagick
-          | .txt                +-- Apache
-          | .xls[x]
-          | .doc[x]
-          |
-     +--------+
-     |        |
-     | Client | $ doc2pdf-client -b mybucket -h 10.0.1.81 test.xlsx
-     |        |
-     +--------+
+          ^                  /  +-- LibreOffice
+          |                 /   +-- ImageMagick
+          |.txt      ///////    +-- Apache
+          |.xls[x]  /       
+          |.doc[x] / GET/POST
+          |       / 
+     +--------+  /   $ curl http://10.0.1.81/converter/mybucket/FE76C51A-872D-11E5-89DF-3E269020DED9
+     |        | /         
+     | Client |/
+     |        | 
+     +--------+  $ doc2pdf-client -b mybucket -h 10.0.1.81 test.xlsx
 
 ```
 
