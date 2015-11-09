@@ -67,7 +67,7 @@ internet.  This is necessary so that the required assets can be
 retrieved and installed.
 
 * ...you take a look at the defaults defined in the CloudFormation
-JSON templat and make the necessary modifications or override them on
+JSON template and make the necessary modifications or override them on
 the command line when you run the `libreoffice-create-stack` bash
 script.  Pay attention to these parameters in the template:
 
@@ -117,8 +117,10 @@ See `libreoffice-doc-converter.json`.
 
 See `libreoffice-create-stack`
 
-Assuming you've defined an IAM role called `bucket-write`, to create
-an EC2 instance using the provide script, try this:
+Assuming you've defined an IAM role called `bucket-writer`, to create
+an EC2 instance that will implement your document conversion service,
+use the provided script that submits the CloudFormation stack for
+creation. *To use the script you should have the AWS CLI tools installed.*
 
 ```
  $ libreoffice-create-stack -?
