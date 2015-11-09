@@ -8,22 +8,22 @@ produces two RPMs:
 - `doc-converter-1.0.0-0.rpm`
 - `doc-converter-client-1.0.0-0.rpm`
 
-...or some other versioned RPMs. Once more, this project's target is
-an RPM that you can then use to create a document conversion server.
-In other words, you build an RPM then follow some additional
-instructions in order to create the server.
+...or some other versioned RPMs. Once more, this project's targets are
+RPMs that you can then use to create a document conversion server and
+client.  In other words, you build these RPMs then follow some
+additional instructions in order to create the server.
 
 If you don't want to create the RPMs you can try to download copies of
-the RPMs (no guarantees that they actually work however) from:
+the RPMs (no guarantees that they will actually work however) from:
 
 `https://doc-converter.s3-website-us-east-1.amazonaws.com`
 
 # Description
 
 Behind the scenes, the document conversion process uses LibreOffice's
-*headless* mode in a command line fashion.  Yes, I know you can run
-LibreOffice as a server in headless mode, but my experience with that
-method has not been all that positive, hence this HTTP based
+*headless* mode in a command line fashion.  While apparently you can
+run LibreOffice as a server in headless mode, my experience with
+that method has not been all that positive, hence this HTTP based
 conversion process pays the penalty of a fork and exec to execute
 `soffice` from the command line.
 
