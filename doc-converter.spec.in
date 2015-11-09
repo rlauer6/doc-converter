@@ -16,7 +16,6 @@ License:    GNU General Pubilc License v3.0
 Group:      Applications/System
 
 BuildRequires:   automake
-BuildRequires:   ctags
 BuildRequires:   rpm-build
 
 Provides: perl(Amazon::S3)
