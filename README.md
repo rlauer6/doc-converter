@@ -15,7 +15,7 @@ server and client.  In other words, you build these RPMs then follow
 some additional instructions in order to create the server.
 
 If you don't want to create your own customized RPMs you can try
-install the RPMs (no guarantees that they will actually work for you
+to install the RPMs (no guarantees that they will actually work for you
 however) from the quasi-official `doc-converter` YUM repository:
 
 ```
@@ -28,7 +28,7 @@ enabled=1
 
 # Amazon AWS Architecture
 
-The `doc-converter` service employs an S3 bucket as a document
+The `doc-converter` service employs your S3 bucket as a document
 repository.  Both the `doc-converter` client and server use the S3
 bucket for storing documents.  In ASCII art, the architecture looks
 something like this:
@@ -52,12 +52,12 @@ something like this:
      +--------+
 ```
 
-Clients push documents to the S3 bucket and then request a conversion
-service via an HTTP endpoint.  The server reads the bucket and
-converts the documents.  The client can then retrieve the PDF and/or
-.png files.
+Your clients push documents to your S3 bucket and then request a
+conversion service via an HTTP endpoint.  The server reads the bucket
+and converts the documents.  The client can then retrieve the PDF
+and/or .png files.
 
-## Architectural Considerations/Alternatives
+## Architectural Considerations and Alternatives
 
 S3 buckets can also be configured to generate various events when
 objects are modified in the S3 bucket.  The S3 service can generate:
@@ -72,11 +72,11 @@ waiting for these events or an endpoint that handles SNS
 notifications.  In either case, we would need to provision an EC2
 instance of some sort to run our code.
 
-*Scenario 3* is clearly more appealing.  Create a Lambda function that
-responds to the S3 event and then perform some magic on the documents.
-While this appears a bit more appealing architecturally, it introduces
-some complexity in figuring out exactly how a Lambda function can
-invoke LibreOffice!
+*Scenario 3* is clearly more appealing.  That is, create a Lambda
+function that responds to the S3 event and then perform some magic on
+the documents.  While this appears a bit more appealing
+architecturally, it introduces some complexity in figuring out exactly
+how a Lambda function can invoke LibreOffice!
 
 In the end, a simple Perl CGI that forks and executes LibreOffice from
 the command line, while a still a bit unsatisfying, does the trick.
@@ -90,8 +90,8 @@ Behind the scenes, the document conversion process uses LibreOffice's
 *headless* mode from the command line.  While you can apparently run
 LibreOffice as a server in headless mode, my experience with that
 method has not been all that positive, hence this HTTP based
-conversion process pays the penalty of a fork and exec to execute
-`soffice` from the command line.
+conversion process pays the penalty of a **fork** and **exec** to
+execute `soffice` from the command line.
 
 Once you install the `doc-converter` RPM, take a peek at `man
 doc-converter` for more details.  You can also take a look at
@@ -100,7 +100,7 @@ converting documents.
 
 # Reporting Bugs, Carping or Making Constructive Suggestions
 
-Rob Lauer - <rlauer6@comcast.net>
+Fire away: Rob Lauer - <rlauer6@comcast.net>
 
 I would be especially interested in anyone that has figure out whether:
 
@@ -173,7 +173,7 @@ documents.  The policy for an appropriate IAM role might look like this:
              ],
              "Resource": [
                  "arn:aws:s3:::mybucket",
-                 "arn:aws:s3:::mybucket/doc-converter/*"
+                 "arn:aws:s3:::mybucket/*"
              ]
          }
      ]
@@ -252,13 +252,63 @@ using Japanese fonts, this fix may not work for you. YMMV.
 
 # Getting Started
 
-Make sure you have installed:
+- If you want to merely create a new `doc-converter` server instance read the section the section title *Creating a Document Conversion Server*.
+- If you want to hack on the project read the section title *Hacking on the Project*
+
+## Creating a Document Conversion Server
+
+You should be able to create `doc-converter` instance by simply
+installing the client package and creating the stack using the
+included CloudFormation template.  The EC2 client from which you
+create the stack should have the AWS CLI tools.
+
+1. Setup the yum repository
+2. Install the client package
+3. Set your credentials
+3. Submit the CloudFormation template
+
+```
+$ sudo yum-config-manager --nogpgcheck --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
+$ sudo yum --nogpgcheck -y install doc-converter-client
+```
+
+Make sure your AWS credentials are available either in your
+`~/.aws/config` file or as environment variables.
+
+```
+$ libreoffice-create-stack -k mac-book -R mybucket -i t2.micro \
+                           -t /usr/share/doc-converter/libreoffice-doc-converter.json
+
+```
+
+You should see some output put that look something:
+
+```
+{
+    "StackId": "arn:aws:cloudformation:us-east-1:106518701080:stack/libreoffice-doc-converter/287f64e0-8727-11e5-8263-50d5cd23c4c6"
+}
+```
+Are we there yet, are we there yet?
+
+```
+$ aws cloudformation describe-stacks --region us-east-1 --stack-name libreoffice-doc-converter --query 'Stacks[0].StackStatus'
+```
+
+## Hacking on the Project
+
+Hacking on the project means working with `autoconf`, `bash` and Perl
+scripts.  If that makes your heart bump read on. Make sure you have
+installed:
 
 * automake
 * autoconf
 * rpm-build
 
-To get started, download the project and run the bootstrap script.
+To get started, download the project from GitHub, unzip it try to
+build it.  You might have some success, if not, it's most likely some
+toolchain issues you'll need to investigate.  It's not rocket
+science...
+
 
 ```
 $ wget https://github.com/rlauer6/doc-converter/archive/master.zip
@@ -273,27 +323,45 @@ provided. Make sure you've installed `autoconf`, `automake`, and the
 `rpm-build` packages and have a working RPM build directory.
 
 ```
+$ mkdir -p ~/rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+$ echo "%_topdir /home/ec2-user/rpm" > ~/.rpmmacros
+```
+
+Now give it a go to create the RPMs.
+
+```
 $ ./build
 ```
 
-...or to build the RPMs and install them to your own S3 bucket...
+If you want to build the RPMs and install them to your own S3 bucket that
+you've turned into a static website (and hence a yum repo), try this recipe.
 
 ```
-$ ./build bucket-name
+$ aws s3 mb s3://mybucket
+$ aws s3 cp index.html s3://mybucket/ --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
+$ aws s3 website s3://mybucket/ --index-document index.html \
+                                --error-document error.html
+$ ./build mybucket
 ```
 
-You'll want to install the RPMs in an accessible place so the
-CloudFormation template can grab them during the stack creation.  You
-specify what YUM repo the RPMs were installed to using the -u option
-of the `libreoffice-create-stack` script.
+*This probably should not be the same bucket you use for document
+conversion.*
+
+The CloudFormation template to create your `doc-converter` server will
+try to install the `doc-converter` RPM package from a repo.  In fact
+it's the one that you specified using the -u option of the
+`libreoffice-create-stack` script, so the above recipe might be useful
+to you if you want to create a repo that can be accessed by the
+CloudFormation template.
+
 
 ```
 $ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
                            -t /usr/share/doc-converter/libreoffice-doc-converter.json \
-                           -u http://doc-converter.s3-website-us-east-1.amazonaws.com
+                           -u http://mybucket.s3-website-us-east-1.amazonaws.com
 ```
 
-## Alternate Build Procedure
+## Alternate Server Build Procedure
 
 On the other hand you can just throw your hands up and say, "oh
 bloody hell", and see what the dang CloudFormation template is trying
@@ -367,3 +435,7 @@ $ /usr/libexec/doc2pdf-client -t 70x90 -h 10.0.1.108 -b mybucket foo.doc
 ```
 
 See `man doc2pdf-client` for more details.
+
+# Finally...
+
+I think you have enough clues to proceed, but if not, drop me a note.
