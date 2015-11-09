@@ -53,12 +53,15 @@ PERLINCLUDE = \
     -I $(perl5libdir)
 
 # pattern rules
-.pm: .pm.in
+%.pm: %.pm.in
 	test -d "$$(dirname "$@")" || $(INSTALL) -d "$$(dirname "$@")"
 	$(do_subst) $< > $@
 	$(perlwc) -wc $(PERLINCLUDE)  $@ || { rm $@ && exit 1; }
 
 $(GDOCCONVERTERMODULES): % : %.in
+	test -d "$$(dirname "$@")" || $(INSTALL) -d "$$(dirname "$@")"
+	$(do_subst) $< > $@
+	$(perlwc) -wc $(PERLINCLUDE)  $@ || { rm $@ && exit 1; }
 
 $(GPERLMODULES): % : %.in
 

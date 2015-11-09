@@ -52,17 +52,17 @@ PERLINCLUDE = \
     $(PERL5_EXTRA_INCLUDES) \
     -I $(perl5libdir)
 
-.cgi: .pl.in
+%.cgi: %.pl.in
 	test -d "$$(dirname "$@")" || $(INSTALL) -d "$$(dirname "$@")"
 	$(do_subst) $< > $@
 	$(perlwc) -wc $(PERLINCLUDE) $@ || { rm $@ && exit 1; }
 
-.pl: .pl.in
+%.pl: %.pl.in
 	test -d "$$(dirname "$@")" || $(INSTALL) -d "$$(dirname "$@")"
 	$(do_subst) $< > $@
 	$(perlwc) -wc $(PERLINCLUDE) $@ || { rm $@ && exit 1; }
 
-.cgi: .sh.in
+%.cgi: %.sh.in
 	test -d "$$(dirname "$@")" || $(INSTALL) -d "$$(dirname "$@")"
 	$(do_subst) $< > $@
 
