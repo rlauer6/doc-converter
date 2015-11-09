@@ -1,3 +1,5 @@
+# README
+
 This the README file for the `doc-converter` project.  The
 `doc-converter` project implements an HTTP service for, among other
 things, converting .xls[x] and .doc[x] documents to PDF.  The project
@@ -169,7 +171,8 @@ far heavier versions of Perl S3 interfaces.
 A Perl script, `fix-OOXMLRecalcMode` is executed as part of the stack
 creation process.  It sets a LibreOffice configuration value so
 spreadsheets are recalculated when they are loaded.  This is required
-if you want your formulas to be calculated before PDFs are created.
+if you want your formulas in spreadsheets to be calculated before PDFs
+are created.
 
 ### ghostscript fixups (Japanese Fonts)
 
@@ -180,7 +183,7 @@ using Japanese fonts, this fix may not work for you. YMMV.
 
 # Building an RPM
 
-Building an RPM can be done using the `build` script provided. Make
+Building the project RPMs can be done using the `build` script provided. Make
 sure you've installed the `rpm-build` package and have a working RPM
 build directory.
 
@@ -195,7 +198,7 @@ $ ./build bucket-name
 ```
 
 You'll want to install the RPMs in an accessible place so the
-CloudFormation script can grab them during the stack creation.  You
+CloudFormation template can grab them during the stack creation.  You
 specify where the RPMs were installed using the -u option of the
 `libreoffice-create-stack` script.
 
@@ -207,7 +210,7 @@ $ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
 
 On the other hand you can just throw your hands up and so say, "oh
 bloody hell", and see what the dang CloudFormation template is trying
-to do in that wonky UserData section:
+to do in that wonky UserData section and do it all by hand.
 
 ```
 "UserData"           : { "Fn::Base64" : { "Fn::Join" : ["", [
@@ -253,6 +256,7 @@ In that case, you need to do the following things:
 5. Configure & restart Apache
 6. Apply patches to the LibreOffice config and ghostscript files
 
-Sure, you can do all those things manually, but the point of all the
-*automation* is so that you can create multiple instances of the
-document converter.
+Sure, you can do all those things manually, but the point of all of
+this *automation* is so that you can create multiple instances of the
+document converter.  You might want to create a load balanced document
+conversion service.
