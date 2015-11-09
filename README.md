@@ -1,29 +1,93 @@
 # README
 
 This the README file for the `doc-converter` project.  The
-`doc-converter` project implements an HTTP service for, among other
-things, converting .xls[x] and .doc[x] documents to PDF.  The project
-produces two RPMs:
+`doc-converter` project implements an HTTP service, architected to run
+in the Amazon AWS envrironment, for among other things, converting
+.xls[x] and .doc[x] documents to PDF.  This project will produce two
+RPMs:
 
 - `doc-converter-1.0.0-0.rpm`
 - `doc-converter-client-1.0.0-0.rpm`
 
-...or some other versioned RPMs. Once more, this project's targets are
-RPMs that you can then use to create a document conversion server and
-client.  In other words, you build these RPMs then follow some
-additional instructions in order to create the server.
+...or some other versioned RPMs. Just to be clear, this project's
+targets are RPMs that you can then use to create a document conversion
+server and client.  In other words, you build these RPMs then follow
+some additional instructions in order to create the server.
 
-If you don't want to create the RPMs you can try to download copies of
-the RPMs (no guarantees that they will actually work however) from:
+If you don't want to create your own customized RPMs you can try
+install the RPMs (no guarantees that they will actually work for you
+however) from the quasi-official `doc-converter` YUM repository:
 
-`https://doc-converter.s3-website-us-east-1.amazonaws.com`
+```
+[doc-converter]
+baseurl=https://doc-converter.s3-website-us-east-1.amazonaws.com
+name=doc-converter
+gpgcheck=0
+enabled=1
+```
+
+# Amazon AWS Architecture
+
+The `doc-converter` service employs an S3 bucket as a document
+repository.  Both the `doc-converter` client and server use the S3
+bucket for storing documents.  In ASCII art, the architecture looks
+something like this:
+
+```
+     ___________              +-------+
+     \         / .xls[x], ... |       |
+      \  S3   /  -----------> |  EC2  |
+       \     /  <------------ |       |
+        \___/  .pdf, .png     +-+-----+
+          ^                     +-- LibreOffice
+          |                     +-- ImageMagick
+          | .txt                +-- Apache
+          | .xls[x]
+          | .doc[x]
+          |
+     +--------+
+     |        |
+     | Client |
+     |        |
+     +--------+
+```
+
+Clients push documents to the S3 bucket and then request a conversion
+service via an HTTP endpoint.  The server reads the bucket and
+converts the documents.  The client can then retrieve the PDF and/or
+.png files.
+
+## Architectural Considerations/Alternatives
+
+S3 buckets can be configured to generate various events when objects
+are modified in the S3 bucket.  The S3 service can generate:
+
+1. an SQS notification
+2. an SNS notification
+3. a Lambda event
+
+In the the first two scenarios, we would need some subscriber to those
+events, either a queue handler of some kind that reads the SQS queue
+waiting for these events or an endpoint that handles SNS
+notifications.  In either case, we would need to provision an EC2
+instance of some sort to run our code.
+
+Scenario 3 is clearly more appealing.  Create a Lambda function that
+responds to the S3 event and do some magic on the files.  While this
+appears a bit more appealing architecturally, it introduces some
+complexity in figuring out exactly how a Lambda function can invoke
+LibreOffice!
+
+In the end, a simple Perl CGI that forks and executes LibreOffice from
+the command line, while a still a bit unsatisfying, does the trick.
+
 
 # Description
 
 Behind the scenes, the document conversion process uses LibreOffice's
-*headless* mode in a command line fashion.  While apparently you can
-run LibreOffice as a server in headless mode, my experience with
-that method has not been all that positive, hence this HTTP based
+*headless* mode from the command line.  While you can apparently run
+LibreOffice as a server in headless mode, my experience with that
+method has not been all that positive, hence this HTTP based
 conversion process pays the penalty of a fork and exec to execute
 `soffice` from the command line.
 
@@ -268,7 +332,7 @@ to do in that wonky `UserData` section and do it all by hand.
 ]]}}
 ```
 
-In that case, you need to do the following things:
+In that case, you essentially need to do the following things:
 
 1. Create an EC2 instance
 2. Install the *necessary* RPM packages as described in the `doc-converter.spec` file.
@@ -277,7 +341,21 @@ In that case, you need to do the following things:
 5. Configure & restart Apache
 6. Apply patches to the LibreOffice config and ghostscript files
 
-Sure, you can do all those things manually, but the point of all of
-this *automation* is so that you can create multiple instances of the
-document converter.  You might want to create a load balanced document
-conversion service.
+So, yeah, sure, you can do all those things manually, but the point of
+all of this *automation* is so that you can create multiple instances
+of the document converter.  You might want to create a load balanced
+document conversion service someday.
+
+# Using the Service
+
+Assuming you've stuck with us so far, and you have an EC2 server
+running, you'll want to try it out.
+
+```
+$ export DOC_CONVERTER_HOST=10.0.1.108
+$ export DOC_CONVERTER_BUCKET=mybucket
+$ /usr/libexec/doc2pdf-client test.xlsx
+
+```
+
+See `man doc2pdf-client` for more details.
