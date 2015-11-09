@@ -1,0 +1,270 @@
+package DocConverter::Utils;
+
+# Utilities for the client/server portions of the doc-converter project
+
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use strict;
+use warnings;
+
+use Amazon::S3;
+use Data::Dumper;
+use File::Basename;
+use File::Temp qw/tempfile tempdir/;
+use HTTP::Request;
+use LWP::UserAgent;
+use JSON;
+
+use vars qw/@EXPORT_OK @ISA %EXPORT_TAGS/;
+
+@ISA = qw/Exporter/;
+
+our %MIME_TYPES = (
+		  'application/pdf'          => '.pdf',
+		  'image/jpeg'               => '.jpg',
+		  'image/png'                => '.png',
+		  'application/vnd-ms-excel' => '.xls',
+		  'application/msword'       => '.doc',
+		  'application/vnd.openxmlformats-officeodocument.wordprocessingml.document' => '.docx',
+		  'application/vnd.openxmlformats-officeodocument.spreadhseetml.sheet'       => '.xlsx'
+		 );
+
+@EXPORT_OK = qw/logger put_to_s3 get_from_s3 list_bucket get_ec2_credentials/;
+
+%EXPORT_TAGS = (all => \@EXPORT_OK);
+
+=pod
+
+=head1 NAME
+
+C<DocConverter::Utils>
+
+=head1 SYNOPSIS
+
+ use DocConverter::Utils qw/put_to_s3/;
+
+ put_to_s3( $bucket, $document_id, $file );
+
+ get_from_s3( $bucket, $document_id, $file );
+
+ list_bucket( $bucket );
+
+ my $creds = get_ec2_credentials();
+
+=head1 DESCRIPTION
+
+A set of common utilities, some of which are used by both the client
+(C<doc2pdf-client>) and the server (C<doc-converter.cgi>).
+
+=head1 FUNCTIONS
+
+=cut
+
+
+=pod
+
+=head2 get_ec2_credential()
+
+Returns temporary EC2 credentials based on the role assigned to the
+instance.  If no role is assigned, returns undef.
+
+ my $creds = get_ec2_credentials();
+
+Returns a hash containing three members:
+
+=over 5
+
+=item aws_secret_access_key
+
+The AWS temporary secret access key.
+
+=item aws_access_key_id
+
+The AWS access key.
+
+=item token
+
+A session token that should be sent in the header
+(C<x-amz-security-token>) when API requests are made.  This should be
+handled transparently by the API functions.  I had to hack the
+C<Amazon::S3> module to get that to work.
+
+  sub _add_auth_header {
+    my ($self, $headers, $method, $path) = @_;
+    my $aws_access_key_id     = $self->aws_access_key_id;
+    my $aws_secret_access_key = $self->aws_secret_access_key;
+    
+    if (not $headers->header('Date')) {
+      $headers->header(Date => time2str(time));
+    }
+
+ => # RobE<039>s HACK
+    if ( $self->{token} ) {
+      $headers->header('x-amz-security-token', $self->{token});
+    }
+ =>
+ 
+    my $canonical_string = $self->_canonical_string($method, $path, $headers);
+     my $encoded_canonical =
+       $self->_encode($aws_secret_access_key, $canonical_string);
+    headers->header( Authorization => "AWS $aws_access_key_id:$encoded_canonical" );
+  }
+
+=back
+
+=cut
+
+sub get_ec2_credentials {
+  my $role = shift;
+
+  my $url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials/';
+
+  my $ua = LWP::UserAgent->new;
+  
+  my $creds = {};
+
+  eval {
+    # could be infinite, but I don't think so.  Either we get an error ($@), or a non-200 response code
+    while ( ! $creds->{token} ) {
+
+      $url .= $role if $role;
+
+      my $req = HTTP::Request->new( GET => $url );
+      my $rsp = $ua->request($req);
+
+      # if not 200, then get out of Dodge
+      last unless $rsp->is_success;
+
+      if ( $role ) {
+        @{$creds}{qw/aws_access_key_id aws_secret_access_key token/}  = @{from_json( $rsp->content )}{qw/AccessKeyId SecretAccessKey Token/};
+      }
+      else {
+        $role = $rsp->content;
+	$creds = undef unless $role;
+	last unless $role;
+      }
+    }
+  };
+  
+  return $creds;
+}
+
+
+=pod
+
+=head2 logger
+
+ logger( message, [fh] )
+
+Writes a log message to C<fh> or C<STDERR>.  If C<message> is a
+reference, then C<Data::Dumper> is used to serialize the data.
+
+=cut
+
+sub logger {
+  my $msg = shift;
+  my $fh = shift || *STDERR;
+
+  $msg = Dumper $msg if ref($msg);
+
+  my $parent = (caller(0))[3];
+
+  print $fh sprintf("[%s]\t%s\t%s: %s\n", scalar(localtime), $$, $parent, $msg);
+}
+
+
+=pod
+
+=head2 put_to_s3
+
+ put_to_s3( bucket, document-id, file )
+
+Send a file to an S3 bucket. Returns the bucket key if successful. The
+file is stored in the S3 bucket with a key prefix of
+C<document-id>. The C<document-id> is typically a GUID.
+
+ my $ug = Data::UUID;
+ my $uuid = $ug->create;
+
+ put_to_s3( $bucket, $ug->to_string($uuid), 'somefile.txt' );
+
+
+=over 5
+
+=item bucket
+
+An C<Amazon::S3::Bucket> object.  The file will be uploaded to the
+bucket the prefix C<document-id>.
+
+=item document-id
+
+A document identifier (usually a GUID) that is used as the bucket
+prefix for the file.  The file is then stored with the key
+C<document-id/filename>.
+
+=item file
+
+Fully qualified path to the file to be uploaded.
+
+=back
+
+
+=cut
+
+sub put_to_s3 {
+  my ($bucket, $document_id, $file) = @_;
+
+  my ($key,undef,$ext) = fileparse( $file, qr/\.[^.]*$/ );
+  
+  my $rsp = $bucket->add_key_filename("$document_id/$key$ext", $file);
+
+  return $rsp ? $file : undef;
+}
+
+sub get_from_s3 {
+  my ($bucket, $document_id, $file) = @_;
+
+  my $dir = tempdir( CLEANUP => 1 );
+
+  my $outfile = sprintf("%s/%s", $dir, $file);
+
+  my $rsp = $bucket->get_key_filename( "$document_id/$file", undef, $outfile);
+
+  (-s $outfile) ? $outfile : "";
+}
+
+sub list_bucket {
+  my ($bucket, $document_id) = @_;
+
+  return $bucket->list( { prefix => $document_id } );
+}
+
+
+=pod
+
+=head1 AUTHOR
+
+Rob Lauer - <rlauer6@comcast.net>
+
+=head1 LICENSE
+
+GNU General Public License v3.0
+
+Copyright (C) 2015, Robert C. Lauer
+
+=cut
+
+1;

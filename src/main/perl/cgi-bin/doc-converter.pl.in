@@ -1,0 +1,670 @@
+#!@perlrun@
+
+# Document converter - converts .xls[x], .doc[x] to .pdf
+
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use strict;
+use warnings;
+
+use Data::Dumper;
+use Data::UUID;
+use Date::Manip::Date;
+use DocConverter::Utils qw/:all/;
+use File::Basename;
+use File::Temp qw/tempdir tempfile/;
+use JSON;
+use Scalar::Util qw/reftype/;
+use Time::HiRes qw/gettimeofday tv_interval/;
+
+use vars qw/%ENV/;
+
+=pod
+
+=head1 NAME
+
+ doc-converter.cgi
+
+=head1 SYNOPSIS
+
+ $ echo '{ "pdf": "1", "thumb" : "70x90"}' | \
+ curl -H 'Content-Type: plain/text' \
+      -X PUT \
+      --data-binary @- http://10.0.1.198/converter/mybucket/F4B6368A-8176-11E5-9C30-59359020DED9/foo.xlsx
+
+=head1 DESCRIPTION
+
+Implements a document conversion service that converts .xls[x],
+.doc[x], .png, .jpg files to PDF.  Additionally creates thumbnail
+images.
+
+See `man doc2pdf-client` for details.
+
+=head1 USAGE
+
+The C<doc-converter> service will accept POST and GET requests in various forms.
+
+=head2 POST
+
+C<POST> requests are made when requesting a conversion.  The request
+URI may take serveral forms depending on what additional information
+is provided as part of a JSON payload.
+
+=head3 URI Forms
+
+=over 5
+
+=item /converter/bucket-name/document-id/filename
+
+=item /converter/document-id/filename
+
+=item /converter/filename
+
+=item /converter
+
+=back
+
+=head3 JSON Payload
+
+=over 5
+
+=item pdf
+
+B<Boolean:> 0 or 1, indictes if the service should create a PDF
+
+=item thumb
+
+B<Array:> one or more thumbnail size specifiers of the form 'wxh'.
+
+Example:
+
+  [ '70x90', '400x600' ]
+
+=item file
+
+B<String>: name of the file to convert.
+
+=item bucket
+
+B<String:> name of the S3 bucket where the file will be found and
+where the PDF or thumbnails will be created.
+
+=item page
+
+The page number from which to create the thumbnails.  The default is
+1, the first page.
+
+=item document-id
+
+B<String>: the GUID document identifier of the form:
+
+ [0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12}
+
+A good source of GUIDs is the module C<Data::UUID>.
+
+=back
+
+=head2 GET
+
+A C<GET> request is used to retrieve the status of the
+conversion. Again, a C<GET> request can take on different forms
+described below.
+
+=over 5
+
+=item /converter/bucket/document-id/pid
+
+=item /converter/bucket/document-id
+
+=item /converter?bucket=bucket-name&document-id=?&pid=?
+
+You can use CGI style options. The C<pid> value is optional. If it is
+ommitted, then the status of the last successful conversion is
+returned.
+
+=back
+
+=head1 FAQ
+
+=head2 How do I call this service?
+
+The project includes a reference client (C<doc2pdf-client>), although
+you should consider using your own tools and techniques before
+deciding to use the reference client. You can do anything from using
+the AWS CLI tools to using C<curl>.
+
+=over 5
+
+=item Send a document and request a conversion
+
+ $ aws s3 cp foo.xlsx s3://mybucket/F4B6368A-8176-11E5-9C30-59359020DED9/
+
+ $ echo '{ "pdf": "1", "thumb" : "70x90"}' | \
+ curl -H 'Content-Type: plain/text' \
+      -X PUT \
+      --data-binary @- http://10.0.1.198/converter/mybucket/F4B6368A-8176-11E5-9C30-59359020DED9/foo.xlsx
+
+=item Get the status of a conversion
+
+ $ curl http://10.0.1.198/converter/mybucket/F4B6368A-8176-11E5-9C30-59359020DED9/
+
+=back
+
+=head2 What kind of conversion are possible?
+
+The service is designed primarily to convert Office type documents
+(.doc[x], .xls[x]) to PDFs.  Since the service uses the LibreOffice
+and ImageMagick programs, you can actually convert other formats as
+well.  Additionally, the service will convert .png or .jpg files to
+PDFs and create .png thumbnails from your files.
+
+=over 5
+
+=item .doc[x], .odt
+
+Microsoft Word or OpenOffice documents.
+
+=item .xls[x], .ods
+
+Microsoft Excel, OpenOffice spreadsheets.
+
+=item .png, .jpg
+
+Graphic files are converted using ImageMagick
+
+=back
+
+
+=head2 How do I send the document to the service?
+
+You donE<039>nt. The service relies on the document residing in an S3
+bucket in which both the client and the service have adequate
+permissions.  Use the methods at your disposal to send your document
+to the S3 bucket you are using for conversions.
+
+=head2 How do I retrieve a document or thumbnail?
+
+The purpose of the conversion service is to convert documents in place
+in AmazonE<039>s S3 service.  Presumably, you knew that and you have a
+way to put and get objects from S3.
+
+=head2 Is there are way to speed up conversion?
+
+Maybe. You might want to use more powerful EC2 instances.  In limited
+testing of this, I have found empirically that there is not much
+difference in conversion time between a C<t2.micro> and a C<t2.small>.
+By that I mean, individual runs of a conversion do not seem to be
+faster on a C<t2.small>, indicating that memory alone is not a factor.
+Faster CPUs may yield better results, however you will most likely be
+throughput bound (number of conversions/second) anyway unless you
+create multiple instances of the conversion service and place them
+behind a load balancer.  This is due to the fact that the LibreOffice
+conversion process seems to be single threaded.
+
+Moreover, the C<bash> script (C<doc2pdf>) that invokes the LibreOffice
+headless instance itself enforces the single conversion at-a-time
+model to create a stable converter.  Experiments attempting to execute
+multiple instances of LibreOffice on the same server have not been
+totally successful.
+
+LibreOffice theoretically supports a server mode that accepts
+connections on a TCP port which would, theoretically, reduce the
+LibreOffice startup time at least.  Again, this has been a source of
+frustration when actually trying to use LibreOffice in that mode as it
+relies on a Python/Uno interface that I at least have not grokked
+fully. YMMV.
+
+For the intrepid, I<pyuno> explorer who wants to give this a go, you
+should not have too difficult a time in replacing my interface to
+LibreOffice.  The difficulty seems to be a disconnect between the
+version of Python you may be running on your O/S and the version of
+Python that was used to create the pyuno LibreOffice interface.  You
+have been warned.
+
+ThereE<039>s also the Java route which appears equally less
+trodden. Something called the I<JOD converter> was written years ago
+but has gone into hibernation.  The last commit on GitHub was 2012.
+
+ L<https://github.com/mirkonasato/jodconverter?
+
+=head2 Where can I get more information?
+
+See `man doc2pdf-client` for more details.
+
+=head1 AUTHOR
+
+Rob Lauer - <rlauer6@comcast.net>
+
+=head1 LICENSE
+
+GNU General Public License v3.0
+
+Copyright (C) 2015, Robert C. Lauer
+
+=cut
+
+sub pdfinfo {
+  my ($file, $config) = @_;
+
+  logger("no config object") unless reftype $config eq 'HASH' && defined $config->{helpers};
+
+  my $cmd = sprintf("%s %s", $config->{helpers}->{pdfinfo}, $file);
+  logger($cmd);
+
+  open(my $fh, "$cmd|") or die $!;
+  my $pages;
+
+  while (<$fh>) {
+    logger($_);
+
+    /^Pages:\s+(\d+)/ && do {
+      $pages = $1;
+      last;
+    };
+  }
+
+  close $fh;
+
+  return $pages;
+}
+
+
+sub _cvt2png {
+  my %options = @_;
+
+  my $page = sprintf("[%d]", defined $options{page} ? $options{page} - 1 : 0);
+  
+  my @args = (
+	      $options{config}->{helpers}->{convert},
+	      $options{infile} . $page, 
+	      '-auto-orient',
+	      '-thumbnail',
+	      $options{size} . '>', 
+	      '-gravity', 'center',
+	      '-crop', $options{size} . '+0+0!', 
+	      '-background', 'transparent',
+	      '-flatten',
+	      $options{target}
+	     );
+
+  logger(Dumper [ \@args ]);
+
+  system(@args);
+}
+
+sub create_preview {
+  my %options = @_;
+  
+  my ($w, $h) = split 'x', $options{size};
+
+  my ($name, $path, $ext) = fileparse( $options{infile},  qr/\.[^.]*/);
+  $name = $ext unless $name;
+
+  $options{target} = sprintf("%s%s-%s.png", $path, $name, $w);
+
+  _cvt2png( %options );
+
+  unless ( -s $options{target} ) {
+    my (undef, $tempfile) = tempfile;
+    my $cmd = sprintf("%s -f 1 -l 1 %s %s", $options{config}->{helpers}->{pdftops}, $options{infile}, $tempfile);
+    `$cmd`;
+
+    if ( -s $tempfile ) {
+      $options{infile} = $tempfile;
+      _cvt2png( %options );
+    }
+
+    unlink $tempfile if $tempfile && -s $tempfile;
+  }
+
+  return (-s $options{target}) ? $options{target} : ();
+}
+
+sub fatal_error {
+  my $err = shift;
+
+  logger( "fatal error: $err" );
+
+  print <<eom;
+Content-Type: text/plain
+Status: 500
+
+$err
+eom
+  exit 1;
+}
+
+sub get_config {
+
+  my ($name) = fileparse( $0, qr/\.[^.]*$/ );
+
+  my $config;
+
+  eval {
+    my $file = '@datadir@/doc-converter/' . $name . '.cfg';
+    open (my $fh, '<' . $file) or die "could not open config file [$file]";
+  
+    {
+      local $/;
+      $config = from_json( <$fh> );
+    }
+    
+    my $creds = get_ec2_credentials;
+    @{$config}{keys %$creds} = values %$creds;
+  };
+  
+  fatal_error( $@ ) if $@;
+
+  $config;
+}
+
+
+sub send_result {
+  my $status = shift;
+  my $result = shift;
+  
+  print <<eom;
+Content-Type: application/json
+Status: $status
+
+eom
+  print ref($result) ? to_json( $result, { pretty => 1 }) : $result;
+}
+
+
+sub get_status {
+  my $args = shift;
+
+  my $result;
+
+  logger(sprintf("document-id: %s pid: %s bucket: %s", @{$args}{qw/document-id pid bucket/}));
+
+  my $bucket = $args->{s3}->bucket($args->{bucket});
+
+  # find the lastest status file
+  unless ( $args->{pid} ) {
+    my $list = $bucket->list( { prefix => $args->{'document-id'} } );
+    logger( Dumper $list );
+
+    my $newest;
+    my $pid;
+
+    foreach ( @{$list->{keys}} ) {
+      if ( $_->{key} =~/\/(\d+)\-status\.json$/ ) {
+	my $status_date = Date::Manip::Date->new($_->{last_modified});
+	unless ( $newest ) {
+	  $pid = $1;
+	  $newest = $status_date;
+	}
+	elsif ( $newest->cmp($status_date) < 0) {
+	  $pid = $1;
+	  $newest = $status_date;
+	}
+      }
+    }
+
+    $args->{pid} = $pid if $pid;
+    logger($pid . " is the newest");
+  }
+
+
+  my $status_file = get_from_s3($bucket, $args->{'document-id'}, sprintf("%s-status.json", $args->{pid}));
+
+  if ( $status_file && -s $status_file ) {
+    local $/;
+    open(my $fh, "<$status_file");
+    $result = <$fh>;
+    close $fh;
+  }
+
+  $result;
+}
+
+
+sub convert_document {
+  my $args = shift;
+ 
+  my $pid = fork;
+
+  if ( $pid ) {
+    my $result = {
+		  pid => $pid,
+		  url => sprintf("http://%s/converter/%s/%s/%s", $ENV{HTTP_HOST}, @{$args}{qw/bucket document-id/}, $pid)
+		 };
+
+    return $result;
+  }
+
+  close STDOUT;
+  close STDIN;
+
+  my $t0 = [ gettimeofday ];
+  my $t1 = $t0;
+  my $t = {};
+
+  my $document_id = $args->{'document-id'};
+  my $file_to_convert = $args->{file};
+  my $config = $args->{config};
+  
+  my $bucket = $args->{s3}->bucket($args->{bucket});
+  
+  # retrieve document from cloud
+  my $infile = get_from_s3($bucket, $document_id, $file_to_convert);
+  $t->{s3_time} = tv_interval($t1, [gettimeofday]);
+  $t1 = [gettimeofday];
+
+  my ($name, undef, $ext) = fileparse($file_to_convert, qr/\.[^.]*/);
+  $name = $ext unless $name;  # ex: .emacs
+
+  my (undef, $path) = fileparse( $infile, qr/\.[^.]*/);
+  my $outfile = sprintf("%s%s.pdf", $path, $name);
+  logger("outfile: $outfile");
+  logger("infile: $infile");
+
+  my $result = {
+		'document-id' => $args->{'document-id'},
+		pid           => $$
+	       };
+
+  if ( $args->{pdf} ) {
+    # create PDF
+    my $cmd = sprintf("%s %s %s", $config->{helpers}->{doc2pdf}, $infile, $outfile);
+
+    logger($cmd);
+    logger(`$cmd 2>/dev/null`);
+
+    if ( -s $outfile ) {
+      $result->{pdf_size} = -s "$outfile";
+      $result->{pdf} = { 
+			name  => "$name.pdf",
+			pages => pdfinfo($outfile, $config),
+			s3    => sprintf("s3://%s/%s/%s.pdf", @{$args}{qw/bucket document-id/}, $name)
+		       };
+    }
+
+    $t->{libreoffice_time} = tv_interval($t1, [gettimeofday]);
+    $t1 = [gettimeofday];
+    
+    put_to_s3($bucket, $document_id, $outfile);
+    $t->{s3_time} += tv_interval($t1, [gettimeofday]);
+    $t1 = [gettimeofday];
+  }
+
+  if ( -s $outfile && $args->{thumb} && @{$args->{thumb}} ) {
+    # create thumbs
+    my @thumbs;
+    foreach ( @{$args->{thumb}} ) {
+      push @thumbs, create_preview( config => $config, size => $_, infile => $outfile );
+    }
+
+    $t->{imagemagick_time} = tv_interval( $t1, [ gettimeofday ]);
+    $t1 = [gettimeofday];
+    logger(Dumper \@thumbs);
+  
+    $result->{thumbs} = [];
+
+    foreach ( @thumbs ) {
+      my ($name, $path, $ext) = fileparse($_, qr/\.[^.]*$/);
+      push @{$result->{thumbs}}, { 
+				  name => "$name$ext", 
+				  size => -s $_,
+				  s3   => sprintf("s3://%s/%s/%s%s", @{$args}{qw/bucket document-id/}, $name, $ext)
+				 };
+
+      put_to_s3($bucket, $document_id, $_);
+    }
+    
+    $t->{s3_time} += tv_interval($t1, [gettimeofday]);
+    $t1 = [gettimeofday];
+  }
+
+  $t->{elapsed_time} = tv_interval( $t0, [ gettimeofday ]);
+
+  # write status file
+  my $dir = tempdir( CLEANUP => 1);
+  my $status_file = sprintf("%s/%s-status.json", $dir, $$);
+
+  $result->{conversion_time} = $t;
+
+  open(my $fh, ">$status_file" );
+  print $fh to_json($result, { pretty => 1 });
+  close $fh;
+
+  put_to_s3( $bucket, $document_id, $status_file );
+
+  return undef;
+}
+
+
+# +-------------------------+
+# | MAIN PROGRAM START HERE |
+# +-------------------------+
+
+logger("--- Starting $0 ---");
+
+my $args;
+
+eval {
+  # we need to be able to read buckets, so we need credentials which can
+  # come from the config file or the instance role, the latter being the most appropriate
+  my $config = get_config();
+
+  $args = {
+	   config => $config,
+	   s3     => Amazon::S3->new( { map { $_, $config->{$_} } qw/aws_secret_access_key aws_access_key_id token/ }  ),
+	  };
+};
+
+fatal_error($@) if $@;
+
+if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
+  # read parameters from STDIN
+  my $parms = eval {
+    local $/;
+
+    from_json( <STDIN> );
+  };
+  
+  fatal($@) if $@;
+
+  map { $args->{$_} = $parms->{$_} } keys %$parms;
+
+  # support different forms (parameters sent as JSON?)
+  #
+  #   /converter/bucket/document-id/file
+  #   /converter/document-id/file
+  #   /converter/file
+
+  if ( $ENV{PATH_INFO} =~ /converter\/(.*?)\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})\/([^\/]*)$/ ) {
+    $args->{bucket} = $1;
+    $args->{'document-id'} = $2;
+    $args->{file} = $3;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})\/([^\/]*)$/ ) {
+    $args->{'document-id'} = $1;
+    $args->{file} = $2;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/([^\/]*)$/ ) {
+    $args->{file} = $1;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/?/ ) {
+  }
+  
+  if ( $args->{bucket} && $args->{'document-id'} && $args->{file} ) {
+    my $result = convert_document( $args );
+    send_result( '200', $result ) if $result; # send if parent (not child)    
+  }
+  else {
+    fatal_error("error: no bucket, document-id, or file");
+  }
+}
+elsif ( $ENV{REQUEST_METHOD} eq 'GET' ) {
+  use CGI;
+
+  my $cgi = new CGI;
+
+  map { $args->{$_} = $cgi->param($_) } ($cgi->param);
+
+  # support CGI variables
+  #
+  #   /converter/bucket/document-id/pid
+  #   /converter/document-id?pid=&bucket=&
+  #   /converter/document-id/pid?bucket=
+  #   /converter?document-id=&bucket=&pid=
+  #   /converter/pid?document-id&bucket=
+
+  if ( $ENV{PATH_INFO} =~ /converter\/(.*?)\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})(\/\d+|\/)?$/ ) {
+    $args->{bucket} = $1;
+    $args->{'document-id'} = $2;
+    $args->{pid} = (split "/", $3)[1] if $3;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})(\/\d+)?$/ ) {
+    $args->{'document-id'} = $1;
+    $args->{pid} = (split "/", $2)[1] if $2;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})\/?$/ ) {
+    $args->{'document-id'} = $1;
+  }
+  elsif ( $ENV{PATH_INFO} =~ /converter\/\d+$/ ) {
+    $args->{pid} = $1;
+  }
+  
+  if ( $args->{bucket} && $args->{'document-id'} ) {
+    # try to get process process status. it's either:
+    #  a. done
+    #  b. still running
+    #  c. it died and never left a status file
+    my $status = get_status($args);
+
+    if ( $status ) {
+      send_result( '200', $status );
+    }
+    elsif ( kill 0, $args->{pid} ) {
+      send_result( '404', { status => '404', message => 'running'} );
+    }
+    else {
+      send_result( '500', { status => '500', message => 'process not running'} );
+    }
+  }
+  else {
+    fatal_error("error: no bucket or document-id");
+  }
+}
+else {
+  fatal_error("error: invalid request");
+}
+
+exit 0;
