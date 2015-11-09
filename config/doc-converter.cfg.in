@@ -1,0 +1,8 @@
+{
+ "helpers" : {
+     "convert" : "/usr/bin/convert",
+     "pdfinfo" : "/usr/bin/pdfinfo",
+     "doc2pdf" : "/usr/bin/doc2pdf",
+     "pdftops" : "/usr/bin/pdftops"
+ }
+}

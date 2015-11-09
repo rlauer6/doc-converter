@@ -1,0 +1,8 @@
+# $Id$
+
+Action doc-converter /cgi-bin/doc-converter.cgi virtual
+
+<Location /converter >
+  AcceptPathInfo On
+  SetHandler doc-converter
+</Location>
