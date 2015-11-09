@@ -1,0 +1,65 @@
+#!@bashrun@
+
+# convert a file to PDF
+# usage: doc2pdf input-name [output-name]
+
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+SOFFICE=@soffice@
+
+# create a temp directory for output and potentially for profile directory
+outdir=$(mktemp -d)
+LIBREOFFICE_HOME=$outdir
+
+# cleanup temp dir on exit
+trap '[ -d "$outdir" ] && rm -rf $outdir' EXIT
+
+OPTS="--headless --convert-to pdf"
+LOCKFILE=/tmp/oo-lock
+
+#
+# wait up to 2m for a lock - if the server is VERY busy this might be
+# a problem...at some point we may want to simply queue up document
+# conversion requests rather than take the chance that a conversion
+# might fail do to high server load.
+#
+if ! test -e $LOCKFILE; then
+  touch $LOCKFILE
+  chmod o+w $LOCKFILE
+fi
+
+flock -x -w 120 $LOCKFILE -c "HOME=$LIBREOFFICE_HOME $SOFFICE $OPTS $1 --outdir $outdir" >/dev/null 2>&1
+
+filename=$(basename $1)
+# strip off extension
+filename=${filename%.*}
+
+# handle goofy files like .emacs
+test -z "$filename" && filename=$(basename $1)
+
+if test -s "${outdir}/${filename}.pdf"; then
+
+    # move file to dest if we have second arg, else to pwd
+    if [[ -n "$2" ]]; then
+        mv ${outdir}/${filename}.pdf $2
+    else
+        mv ${outdir}/${filename}.pdf $(dirname $1)
+    fi
+    
+    exit 0
+else
+    exit 1
+fi

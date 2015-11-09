@@ -1,0 +1,149 @@
+#!@bashrun@
+
+# create a doc-converter server
+
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+help () {
+    echo "usage: libreoffice-create-stack [options]"
+    echo "       -h|? this"
+    echo "       -i instance type (ex: t2.micro)"
+    echo "       -R role name (defaults to EC2 instance role)"
+    echo "       -s stack name (defaults to 'libreoffice-doc-converter')"
+    echo "       -r region (defaults to us-east-1)"
+    echo "       -t template (defaults to 'libreoffice-doc-converter.json')"
+    echo "       -n server name (defaults to 'libreoffice-doc-converter')"
+    echo "       -v validate template only"
+    echo "       -k keyname"
+    echo "       -u url for the doc-converter RPM"
+    echo "       -e echo only - just echo the command"
+}
+
+set_defaults() {
+    test -z "$StackName" && StackName='libreoffice-doc-converter'
+    test -z "$Template" && Template='libreoffice-doc-converter.json'
+    test -z "$Region" && Region='us-east-1'
+    test -z "$Role" && Role='bucket-writer'
+    test -z "$ServerName" && ServerName='libreoffice-doc-converter'
+    test -z "$InstanceType" && InstanceType='t2.micro'
+}
+
+create_stack() {
+
+    set_defaults;
+
+    if test -n "$VALIDATE"; then
+	aws cloudformation validate-template --template-body=file://$Template --region=$Region
+    else
+	$ECHO aws cloudformation create-stack \
+            --stack-name="$StackName" \
+            --template-body=file://$Template \
+            --region="$Region" \
+            --parameters ParameterKey=EC2Role,ParameterValue=$Role ParameterKey=ServerName,ParameterValue=$ServerName ParameterKey=InstanceType,ParameterValue=$InstanceType $RPMUrl $KeyName \
+            --capabilities=CAPABILITY_IAM
+    fi
+}
+
+OPTS=$(getopt -o ehvr:i:k:u:s:t:R: -- "$@")
+
+if [[ $? -ne 0 ]]; then
+    help;
+    exit $?
+fi
+
+eval set -- "$OPTS"
+
+while [ $# -gt 0 ]; do
+
+    case "$1" in
+
+	-v )
+	    VALIDATE=on
+	    shift 1;
+	    ;;
+
+	-e )
+	    ECHO="echo"
+	    shift 1;
+	    ;;
+
+	-h )
+	    help;
+	    break;
+            ;;
+
+	-i )
+	    InstanceType=$2
+	    shift 2;
+	    ;;
+
+	-k )
+	    KeyName="ParameterKey=KeyName,ParameterValue=$2"
+	    shift 2;
+	    ;;
+
+	-u )
+	    RPMUrl="ParameterKey=RPMUrl,ParameterValue=$2"
+	    shift 2;
+	    ;;
+
+	-R ) 
+	    Role=$2
+	    shift 2;
+	    ;;
+
+	-r ) 
+	    Region=$2
+	    shift 2;
+	    ;;
+
+	-s ) 
+	    StackName=$2
+	    shift 2;
+	    ;;
+
+	-n ) 
+	    ServerName=$2
+	    shift 2;
+	    ;;
+
+	-t ) 
+	    Template=$2
+	    if ! test -e $Template; then
+		echo "$Template does not exist"
+		exit 1;
+	    fi
+
+	    Template=${Template//\//\/\/}
+	    shift 2;
+	    ;;
+
+	-- ) 
+	    shift 1;
+	    if test -z "$1"; then
+		create_stack;
+	    else
+		help;
+	    fi
+	    break;
+	    ;;
+
+	* )
+	    help;
+	    break;
+	    ;;
+    esac
+done
