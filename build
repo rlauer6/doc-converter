@@ -1,40 +1,56 @@
 #!/bin/bash
 
-# script to build RPM
+# script to build the doc-converter RPMs
 
 fatal() {
     echo "$1"
     exit 1;
 }
 
+set -x
+
+test -e configure.ac || fatal "error: no configure.ac - make sure you are in the project root"
+
 # find RPM working directory
 topdir=$(rpmbuild --showrc | cut -f 2,3 -d' '| grep ^_topdir | cut -f 2)
 
-if ! test -d "$topdir/RPMS"; then
-    fatal "no RPM working directory"
-fi
+test -d "$topdir/RPMS" || fatal "error: no RPM working directory"
 
 # build the RPM and update the S3 bucket?
-./bootstrap || fatal "can't bootstrap"
+autoreconf --include=./autotool --force configure.ac || fatal "error: unable to initialize automake"
 
 ./configure --prefix=/usr \
-            --with-libreofficedir=/opt/libreoffice5.0 || fatal "can't configure"
+            --with-libreofficedir=/opt/libreoffice5.0 || fatal "error: unable to configure project"
 
-make dist || fatal "can't create tar ball"
+make dist || fatal "error: unable to create project distribution"
 
-rpmbuild  -tb $(ls -1  doc-converter-*.tar.gz | tail -1) || fatal "can't create RPM"
+rpmbuild  -tb $(ls -1  doc-converter-*.tar.gz | tail -1) || fatal "error: unable to create RPM"
 
-# build the RPM and update the S3 bucket
+# build the RPM and update the S3 bucket that hold the yum repo
 test -n "$1" && BUCKET="$1"
 
 # sync bucket, if bucket provide
 if test -n "$BUCKET"; then
 
-    PERMISSION="--grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers"
+    # create a temporary repo
+    repo=$(mktemp -d)
+    mkdir ${repo}/noarch
 
+    # if we successfully built some RPMs, create a temporary repo and sync with AWS S3 repo
     if test -n "$(ls -1 $topdir/RPMS/noarch/doc-converter*.rpm 2>/dev/null)"; then
-	aws s3 sync  --exclude="*" --include="doc-converter*.rpm" ~/rpm/RPMS/noarch/ s3://$BUCKET/ $PERMISSION
+	find $topdir/RPMS/noarch -name 'doc-converter*' -exec cp {} ${repo}/noarch \;
+
+	# get all the .rpm files from the S3 bucket and recreate the repo
+	aws s3 cp --recursive --exclude="*" --include="*.rpm" s3://$BUCKET/noarch/ ${repo}/noarch
+	createrepo $repo
+
+	# sync local repo with S3 bucket, make it PUBLIC
+	PERMISSION="--grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers"
+	aws s3 sync --recursive --include="*" ${repo} s3://$BUCKET/ $PERMISSION
 	aws s3 ls s3://$BUCKET/
+
+	# cleanup local copy of repo
+	rm -rf $repo
     fi
 else
     echo "...skipping bucket update" 
