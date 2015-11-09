@@ -39,7 +39,7 @@ set_defaults() {
     test -z "$Role" && Role='bucket-writer'
     test -z "$ServerName" && ServerName='libreoffice-doc-converter'
     test -z "$InstanceType" && InstanceType='t2.micro'
-    test -z "$RPMUrl" && RPMUrl=http://doc-converter.s3-website-us-east-1.amazonaws.com
+    test -z "$RPMUrl" && RPMUrl=ParameterKey=RPMUrl,ParameterValue=http://doc-converter.s3-website-us-east-1.amazonaws.com
     test -z "$KeyName" && echo "warning: you probably want to specify a key name"
 }
 
