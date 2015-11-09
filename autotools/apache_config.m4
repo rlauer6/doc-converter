@@ -162,7 +162,7 @@ AC_DEFUN([APACHE_CONFIG],[
            fi
          else
            apache_confdir=${sysconfdir}/httpd/conf
-	   apache_confddir=$(sysconfdir)/httpd/conf.d
+	   apache_confddir=${sysconfdir}/httpd/conf.d
          fi
     	]
         )
