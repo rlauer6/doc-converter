@@ -59,8 +59,8 @@ converts the documents.  The client can then retrieve the PDF and/or
 
 ## Architectural Considerations/Alternatives
 
-S3 buckets can be configured to generate various events when objects
-are modified in the S3 bucket.  The S3 service can generate:
+S3 buckets can also be configured to generate various events when
+objects are modified in the S3 bucket.  The S3 service can generate:
 
 1. an SQS notification
 2. an SNS notification
@@ -72,15 +72,17 @@ waiting for these events or an endpoint that handles SNS
 notifications.  In either case, we would need to provision an EC2
 instance of some sort to run our code.
 
-Scenario 3 is clearly more appealing.  Create a Lambda function that
-responds to the S3 event and do some magic on the files.  While this
-appears a bit more appealing architecturally, it introduces some
-complexity in figuring out exactly how a Lambda function can invoke
-LibreOffice!
+*Scenario 3* is clearly more appealing.  Create a Lambda function that
+responds to the S3 event and then perform some magic on the documents.
+While this appears a bit more appealing architecturally, it introduces
+some complexity in figuring out exactly how a Lambda function can
+invoke LibreOffice!
 
 In the end, a simple Perl CGI that forks and executes LibreOffice from
 the command line, while a still a bit unsatisfying, does the trick.
 
+I note these alternatives in the event someone out there has a niftier
+idea.
 
 # Description
 
@@ -196,7 +198,8 @@ creation. *To use the script you should have the AWS CLI tools installed.*
  $ libreoffice-create-stack -t /usr/share/doc-converter/libreoffice-doc-converter.json \
                             -i t2.micro \
                             -R bucket-writer \
-                            -u https://s3.amazonaws.com/doc-converter/doc-converter.1.0.0-0.noarch.rpm
+                            -k mykey \
+                            -u http://doc-converter.s3-website-us-east-1.amazonaws.com
 ```
 
 ### LibreOffice 5
@@ -261,20 +264,19 @@ To get started, download the project and run the bootstrap script.
 $ wget https://github.com/rlauer6/doc-converter/archive/master.zip
 $ unzip master.zip
 $ cd doc-converter-master
-$ ./bootstrap
 ```
 
 # Building an RPM
 
-Building the project RPMs can be done using the `build` script provided. Make
-sure you've installed the `rpm-build` package and have a working RPM
-build directory.
+Building the project RPMs can be done using the `build` script
+provided. Make sure you've installed `autoconf`, `automake`, and the
+`rpm-build` packages and have a working RPM build directory.
 
 ```
 $ ./build
 ```
 
-...or to build the RPMs and install them on in your S3 bucket...
+...or to build the RPMs and install them to your own S3 bucket...
 
 ```
 $ ./build bucket-name
@@ -282,13 +284,13 @@ $ ./build bucket-name
 
 You'll want to install the RPMs in an accessible place so the
 CloudFormation template can grab them during the stack creation.  You
-specify where the RPMs were installed using the -u option of the
-`libreoffice-create-stack` script.
+specify what YUM repo the RPMs were installed to using the -u option
+of the `libreoffice-create-stack` script.
 
 ```
 $ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
                            -t /usr/share/doc-converter/libreoffice-doc-converter.json \
-                           -u https://s3.amazonaws.com/mybucket/doc-converter-1.0.0-0.noarch.rpm
+                           -u http://doc-converter.s3-website-us-east-1.amazonaws.com
 ```
 
 ## Alternate Build Procedure
@@ -312,12 +314,14 @@ to do in that wonky `UserData` section and do it all by hand.
     "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocServer ", "-c Config ",
     "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
     "\n",
-    "# download LibreOffice 5, etc.\n",
-    "cd /tmp\n",
-    "wget ", { "Ref" : "RPMUrl" }," /tmp\n",
-    "yum install -y /tmp/doc-converter-1.0.0-0.noarch.rpm\n",
-    "wget http://download.documentfoundation.org/libreoffice/stable/5.0.3/rpm/x86_64/LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz -P /tmp\n",
+    "# setup doc-converter repo and install package\n",
+    "yum-config-manager --nogpgcheck --add-repo ", { "Ref" : "RPMUrl" },"\n",
+    "yum install -y doc-converter\n",
+    "# Adbobe Japanese font fix\n",
     "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
+    "# download & install LibreOffice 5\n",
+    "cd /tmp\n",
+    "wget http://download.documentfoundation.org/libreoffice/stable/5.0.3/rpm/x86_64/LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz -P /tmp\n",
     "test -e LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz && tar xfvz LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz\n",
     "cd LibreOffice_5.0.3.2_Linux_x86-64_rpm/RPMS/\n", 
     "mv libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm.sav\n",
@@ -344,7 +348,7 @@ In that case, you essentially need to do the following things:
 So, yeah, sure, you can do all those things manually, but the point of
 all of this *automation* is so that you can create multiple instances
 of the document converter.  You might want to create a load balanced
-document conversion service someday.
+document conversion service someday. ;-)
 
 # Using the Service
 
@@ -355,6 +359,10 @@ running, you'll want to try it out.
 $ export DOC_CONVERTER_HOST=10.0.1.108
 $ export DOC_CONVERTER_BUCKET=mybucket
 $ /usr/libexec/doc2pdf-client test.xlsx
+
+$ /usr/libexec/doc2pdf-client -h 10.0.1.108 -b mybucket test.xlsx
+
+$ /usr/libexec/doc2pdf-client -t 70x90 -h 10.0.1.108 -b mybucket foo.doc
 
 ```
 
