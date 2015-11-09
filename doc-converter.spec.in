@@ -69,6 +69,8 @@ rm -rf %{buildroot}
 ./configure --with-apache-vhost-server='' \
             --with-apache-vhost-dir=/var/www \
             --with-apache-domain-name='' \
+            --enablep-rpm-build-mode \
+	    --sysconfdir=/etc \
             --prefix=/usr \
             --with-libreofficedir=/opt/libreoffice5.0
 
@@ -85,6 +87,7 @@ make DESTDIR=%{buildroot} install
 /usr/share/man/man1/doc-converter.1dc.gz
 /usr/share/doc-converter/README.md
 /usr/share/doc-converter/cidfmap.local
+/usr/share/doc-converter/release
 
 /usr/local/share/perl5
 
