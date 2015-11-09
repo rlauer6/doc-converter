@@ -513,7 +513,7 @@ if ( $options{key} ) {
 
 # if no creds on command line or in environment, see if instance has a role
 unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_key_id} ) {
-  map { $options{$_} = $_ } keys %{get_e2_credentials()};
+  map { $options{$_} = $_ } keys %{get_ec2_credentials()};
 }
 
 unless ( defined $options{aws_secret_access_key} && 
@@ -521,6 +521,10 @@ unless ( defined $options{aws_secret_access_key} &&
 	 defined $options{bucket} &&
 	 defined $options{host}
        ) {
+
+  print STDERR "error: no credentials" unless $options{aws_secret_access_key} && $options{aws_access_key_id};
+  print STDERR "error: no bucket defined" unless $options{bucket};
+  print STDERR "error: no host defined" unless $options{host};
 
   usage();
 }
