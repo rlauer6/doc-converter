@@ -1,6 +1,6 @@
 # README
 
-This the README file for the `doc-converter` project.  The
+This is the README file for the `doc-converter` project.  The
 `doc-converter` project implements an HTTP service, architected to run
 in the Amazon AWS envrironment, for among other things, converting
 .xls[x] and .doc[x] documents to PDF.  This project will produce two
@@ -315,7 +315,7 @@ $ aws cloudformation describe-stacks --region us-east-1 --stack-name libreoffice
 ## Hacking on the Project
 
 Hacking on the project means working with `autoconf`, `bash` and Perl
-scripts.  If that makes your heart bump read on. Make sure you have
+scripts.  If that makes your heart pump read on. Make sure you have
 installed:
 
 * automake
