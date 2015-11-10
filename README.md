@@ -278,7 +278,7 @@ the Project*
 
 ## Creating a Document Conversion Server
 
-You should be able to create `doc-converter` instance by simply
+You should be able to create a `doc-converter` instance by simply
 installing the client package and creating the stack using the
 included CloudFormation template.  The EC2 client from which you
 create the stack should have the AWS CLI tools.
@@ -302,7 +302,7 @@ $ libreoffice-create-stack -k mac-book -R mybucket -i t2.micro \
 
 ```
 
-You should see some output put that look something:
+You should see some output put that looks something:
 
 ```
 {
@@ -321,14 +321,14 @@ Hacking on the project means working with `autoconf`, `bash` and Perl
 scripts.  If that makes your heart pump read on. Make sure you have
 installed:
 
-* automake
-* autoconf
-* rpm-build
+* `automake`
+* `autoconf`
+* `rpm-build`
 
-To get started, download the project from GitHub, unzip it try to
-build it.  You might have some success, if not, it's most likely some
+To get started, download the project from GitHub, unzip it, and try to
+build it.  You might have some success. If not, it's most likely some
 toolchain issues you'll need to investigate.  It's not rocket
-science...
+science though, so hang in there.
 
 
 ```
@@ -428,11 +428,11 @@ to do in that wonky `UserData` section and do it all by hand.
 In that case, you essentially need to do the following things:
 
 1. Create an EC2 instance
-2. Install the *necessary* RPM packages as described in the `doc-converter.spec` file.
+2. Install all of the *Required* RPM packages as described in the `doc-converter.spec` file.
 3. Install LibreOffice 5.0
 4. Install the `doc-converter` package
 5. Configure & restart Apache
-6. Apply patches to the LibreOffice config and ghostscript files
+6. Optionally apply patches to the LibreOffice config and ghostscript files
 
 So, yeah, sure, you can do all those things manually, but the point of
 all of this *automation* is so that you can create multiple instances
@@ -460,4 +460,3 @@ See `man doc2pdf-client` for more details.
 # Finally...
 
 I think you have enough clues to proceed, but if not, drop me a note.
-
