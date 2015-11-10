@@ -226,7 +226,7 @@ The stack creation process mentioned above will grab a version of
 LibreOffice 5 and install that during the instance creation.  The
 LibreOffice 5 tar ball is retrieved from a known location (the last
 known good location on the LibreOffice website) along with
-other assets required for to make this process work correctly.
+other assets required to make this process work correctly.
 
 *The location of these assets might change, so you might have to
 modify the CloudFormation specification.  Again, it is suggested you
