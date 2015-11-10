@@ -1,4 +1,4 @@
-# README
+`# README
 
 This is the README file for the `doc-converter` project.  The
 `doc-converter` project implements an HTTP service, architected to run
@@ -16,7 +16,7 @@ some additional instructions in order to create the server.
 
 If you don't want to create your own customized RPMs you can try
 to install the RPMs (no guarantees that they will actually work for you
-however) from the quasi-official `doc-converter` YUM repository:
+however) from the quasi-official `doc-converter` yum repository:
 
 ```
 [doc-converter]
