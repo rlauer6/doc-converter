@@ -271,9 +271,9 @@ using Japanese fonts, this fix may not work for you. YMMV.
 # Getting Started
 
 - If you want to merely create a new `doc-converter` server instance
-read the section title *Creating a Document Conversion Server*.
+read the section titled *Creating a Document Conversion Server*.
 
-- If you want to hack on the project read the section title *Hacking on
+- If you want to hack on the project read the section titled *Hacking on
 the Project*
 
 ## Creating a Document Conversion Server
