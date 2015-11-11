@@ -45,6 +45,7 @@ Requires: xorg-x11-fonts-75dpi
 Requires: xorg-x11-fonts-100dpi
 Requires: ipa-gothic-fonts
 Requires: ipa-mincho-fonts 
+Requires: doc-converter-utils
 
 BuildArch:  noarch
 
@@ -84,12 +85,8 @@ make DESTDIR=%{buildroot} install
 /usr/libexec/fix-OOXMLRecalcMode
 
 /usr/share/man/man1/fix-OOXMLRecalcMode.1dc.gz
-/usr/share/man/man1/doc-converter.1dc.gz
-/usr/share/doc-converter/README.md
 /usr/share/doc-converter/cidfmap.local
 /usr/share/doc-converter/release
-
-/usr/local/share/perl5
 
 %defattr(-,apache,apache)
 /etc/httpd/conf.d/doc-converter.conf
@@ -99,7 +96,6 @@ make DESTDIR=%{buildroot} install
 
 %package client
 
-Requires:     perl(Class::Accessor::Fast)
 Summary:      @PACKAGE@-client
 Group:        doc-converter
 
@@ -108,11 +104,26 @@ Client components for the doc-converter
 
 %files client
 %defattr(-, root, root)
+
 /usr/bin/libreoffice-create-stack
 
 /usr/libexec/doc2pdf-client
 
-/usr/share/doc-converter/libreoffice-doc-converter.json
 /usr/share/man/man1/doc2pdf-client.1dc.gz
+/usr/share/doc-converter/libreoffice-doc-converter.json
+
+%package utils
+
+Requires:     perl(Class::Accessor::Fast)
+Summary:      @PACKAGE@-utils
+Group:        doc-converter
+
+%description utils
+doc-converter common files
+
+%files utils
+%defattr(-, root, root)
 
 /usr/local/share/perl5
+/usr/share/man/man1/doc-converter.1dc.gz
+/usr/share/doc-converter/README.md
