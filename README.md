@@ -478,7 +478,8 @@ Example GUID:
 
 I think you have enough clues to proceed.  Don't forget to read the man pages.
 
-`$ man doc2pdf-client`
-`$ man doc-converter`
+- `$ man doc2pdf-client`
+
+- `$ man doc-converter`
 
 If all else fails, drop me a note.
