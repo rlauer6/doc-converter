@@ -169,7 +169,52 @@ object that contains the details of the conversion.
 
 =back
 
+=head1 BUCKETS and DOCUMENT-IDs
+
+As explained previously the client and server should have access the
+S3 bucket (objects in the bucket) one way or another.  Using roles and
+policies is one way to achieve this.  ItE<039>s a good practice to
+give your conversion server just enough rights to do his job and no
+more, hence the bucket policy and role approach.
+
+The C<doc-converter> assumes (and requires) that each document use
+a GUID prefix or what we term a I<document-id>.  GUIDs as they are
+used for the prefix, are unique identifiers composed of hexadecimal
+digits. The regex would look something like this:
+
+
+ [0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12}
+
+Example:
+
+ FCA577DA-8120-11E5-BB37-95249020DED9
+
+The artifacts created during the conversion process will also use this
+GUID as the prefix of the object.  So, if we were converting
+F<test.xlx> located in the bucket named C<mybucket> to a PDF and
+creating a thumbnail (70x90) using the I<document-id> above, we would
+end up with these S3 objects:
+
+ s3://mybucket/FCA577DA-8120-11E5-BB37-95249020DED9/test.xlsx
+ s3://mybucket/FCA577DA-8120-11E5-BB37-95249020DED9/test.pdf
+ s3://mybucket/FCA577DA-8120-11E5-BB37-95249020DED9/test-70.png
+ s3://mybucket/FCA577DA-8120-11E5-BB37-95249020DED9/status-6259.json
+
+=head2 How do I create a GUID?
+
+The reference client, C<doc2pdf-client> does this for you when it sends
+the object for conversion, however if you are not using the reference
+client and you want to store things in your bucket yourself, there are
+other ways to generate a GUID.
+
+In Perl, we use the C<Data::UUID> module.  There are corresponding
+UUID modules in Python, Ruby and/or you can use the Linux command line
+utility C<uuid>.
+
+ $ document_id=$(uuid -F STR | tr [a-f] [A-F])
+
 =head1 OPTIONS
+
 
 The C<doc2pdf-client> scripts accepts several options, some of which
 are required, one way or another.
