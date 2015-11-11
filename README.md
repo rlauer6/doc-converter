@@ -457,6 +457,23 @@ $ /usr/libexec/doc2pdf-client -t 70x90 -h 10.0.1.108 -b mybucket foo.doc
 
 See `man doc2pdf-client` for more details.
 
+# Oh Yeah, GUIDs
+
+The `doc-converter` service URI requires a document id which is, in fact a GUID.
+
+https://en.wikipedia.org/wiki/Globally_unique_identifier
+
+Your documents should be stored in the S3 bucket with a prefix that
+consists of the GUID (8+4+4+4+12).  The included client,
+`doc2pdf-client`, uploads documents to the bucket and creates a new
+document identifier for you.
+
+Example GUID:
+
+```
+3F2504E0-4F89-41D3-9A0C-0305E82C3301
+```
+
 # Finally...
 
 I think you have enough clues to proceed, but if not, drop me a note.
