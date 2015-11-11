@@ -3,11 +3,12 @@
 This is the README file for the `doc-converter` project.  The
 `doc-converter` project implements an HTTP service, architected to run
 in the Amazon AWS envrironment, for among other things, converting
-.xls[x] and .doc[x] documents to PDF.  This project will produce two
+.xls[x] and .doc[x] documents to PDF.  This project will produce three
 RPMs:
 
 - `doc-converter-1.0.0-0.rpm`
 - `doc-converter-client-1.0.0-0.rpm`
+- `doc-converter-utils-1.0.0-0.rpm`
 
 ...or some other versioned RPMs. Just to be clear, this project's
 targets are RPMs that you can then use to create a document conversion
@@ -24,6 +25,14 @@ baseurl=https://doc-converter.s3-website-us-east-1.amazonaws.com
 name=doc-converter
 gpgcheck=0
 enabled=1
+```
+...or
+
+```
+$ sudo yum-config-manager --nogpgcheck --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
+$ sudo yum --nogpgcheck -y install doc-converter
+$ sudo yum --nogpgcheck -y install doc-converter-client
+
 ```
 
 # Amazon AWS Architecture
