@@ -1,4 +1,4 @@
-`# README
+# README
 
 This is the README file for the `doc-converter` project.  The
 `doc-converter` project implements an HTTP service, architected to run
