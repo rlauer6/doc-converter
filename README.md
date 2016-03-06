@@ -40,12 +40,12 @@ $ sudo yum -y install doc-converter
 $ sudo yum -y install doc-converter-client
 ```
 
-P.S. The reason for setting `name` in the repo config file is so
-yum-config-manager will add the gpgcheck option.  No attempt to set
-gpgcheck with out first having gpgcheck in the file was successful
-until I hit upon this work around.
+*P.S. The reason for setting `name` in the repo config file is so
+`yum-config-manager` will add the `gpgcheck` option.  No attempt to set
+`gpgcheck` with out first having `gpgcheck` in the file was successful
+until I hit upon this work around.*
 
-# Amazon AWS Architecture
+# `doc-converter' Architecture
 
 The `doc-converter` service employs your S3 bucket as a document
 repository.  Both the `doc-converter` client and server use the S3
@@ -78,28 +78,29 @@ something like this:
 ```
 
 Your clients push documents to your S3 bucket (more on permissions
-here later) and then request a conversion service via an HTTP
-endpoint.  The server reads the bucket and converts the documents.
-The client can then retrieve the PDF and/or .png files from the S3
-bucket.
+you'll need for your bucket later) and then request a conversion
+service by making a request to an HTTP endpoint.  The server then
+reads the bucket and converts the documents.  The client can then
+retrieve the PDF and/or .png files from the S3 bucket.
 
 ## Architectural Considerations and Alternatives
 
-S3 buckets can also be configured to generate various events when
-objects are modified in the S3 bucket.  The S3 service can generate:
+On possible way to implement this service takes advantage of the fact
+that S3 buckets can be configured to generate various events when
+objects are modified.  The S3 service can generate:
 
 1. an SQS notification
 2. an SNS notification
 3. a Lambda event
 
-In the the first two scenarios, we would need some subscriber to those
-events, either a message queue handler of some kind that reads the SQS
-queue waiting for these events or an endpoint that handles SNS
-notifications.  In either case, we would need to provision an EC2
-instance of some sort to run our code.
+In the the first two scenarios, we would need some sort of subscriber
+to those events, either a message queue handler of some kind that
+reads the SQS queue and processes the events or an endpoint that
+handles SNS notifications and takes an appropriate action.  In either
+case, we would need to provision an EC2 instance to run our code.
 
 *Scenario 3* is clearly more appealing.  That is, create a Lambda
-function that responds to the S3 event and then perform some magic on
+function that responds to the S3 event and then performs some magic on
 the documents.  While this appears a bit more appealing
 architecturally, it introduces some complexity in figuring out exactly
 how a Lambda function can invoke LibreOffice!
@@ -107,10 +108,13 @@ how a Lambda function can invoke LibreOffice!
 In the end, I decided to implement a very simple store and request
 model. The client stores the document to a bucket shared between the
 client and server and then explicitly tells the server to do
-something.  This explicit request, which can be made when the document
-is pushed to the shared S3 bucket is low-cost (as in nearly zero) as
-compared to a generating an event placed on a queue that will need to
-be read at some frequency.
+something.  This explicit request, which can be made by the client
+after the document is pushed to the shared S3 bucket, is low-cost (as
+in nearly zero) as compared to generating an event placed on a queue
+that will need to be read at some frequency.  SQS reads have a cost,
+albeit very small.  However if you plan on running your service
+24x7x365 you'll be probably be doing a lot of reads that come up
+empty.
 
 The store and request model only requires a small Perl CGI that forks and
 executes LibreOffice from the command line.  While a bit unsatisfying
@@ -118,17 +122,16 @@ from the elegance perspective it seems to do the trick reliably, if
 not quickly.
 
 While not sexy, it does support the use case I was actually interested
-in.  My client creates a document in an S3 bucket for both potential
+in.  My client creates a document in an S3 bucket for both potentially
 immediate needs and for archival requirements.  In general I might not
 need the PDF or .png thumbnails right away so I'm not necessarily
 interested in waiting around for the server to complete those tasks.
 
-It would then be sufficient for my client to store and request the
-conversion.  And I might have some other tasks for the server to
-perform on my files one day, so this model sort of made sense.  Of
-courrse, I could opt to wait for the conversion as well.  YMMV.
+In that case it would be sufficient for my client to store the file to
+S3 and then just request the conversion.  Of course, I could opt to
+wait for the conversion as well.  YMMV.
 
-I note alternative architectures for files conversions in the event
+I note alternative architectures for file conversions in the event
 someone out there has a niftier solution.
 
 # Description
@@ -169,6 +172,7 @@ I would be especially interested in anyone that has figure out whether:
 - RPM build tools (`rpm-build`)
 - `automake`
 - `autoconf`
+- `rpm-build`
 
 ## Details
 
@@ -183,8 +187,8 @@ such a stack is included as part of the `doc-converter-client` RPM.
 To use the stack creation script you'll want to make sure that:
 
 * ...you're launching the stack in a subnet that has access to the
-internet.  *This is necessary so that the required assets can be
-retrieved and installed.*
+internet.  **This is necessary so that the required assets can be
+retrieved and installed.**
 
 * ...you take a look at the defaults defined in the CloudFormation
 JSON template and make the necessary modifications or override them on
@@ -193,8 +197,8 @@ script.  Pay attention to these parameters in the template:
 
   * Subnet
   * Keyname
-  * SecurityGroup
   * Role
+  * Instance Type
 
 ```
 
@@ -285,21 +289,44 @@ OTHER ASSETS IN ORDER TO RUN THE STACK CREATION SCRIPT.**
 The stack has to be launched in a subnet, but which one?  The stack
 will not create it's own network or subnet, so you must provide the
 subnet id.  The script will determine the VPC that you are launching
-into from the subnet.  If you aren't using a VPC, then you'll have to
-muck with the CloudFormation script and work that out.
+into by looking at the subnet id.  If you aren't using a VPC, then
+you'll have to muck with the CloudFormation script and work that out
+for yourself.  You should be using a VPC ;-)
 
 #### Security Group
 
-By default the stack will create a security group for you.  It will
-open up ingress to ports 80 and 22.  It is assumed you are launching
-the instance in a public subnet that has access to the internet so an
-external public IP is provisioned.  If you want to launch your server
-in a private subnet, you can, but your instance must have access to
-the internet via a NAT or gateway otherwise the instance will not be
-able to be configured by accessing yum repositories.
+By default the stack will create it's own security group.  It will
+open up ingress to ports 80 and 22 only.  It is assumed you are
+launching the instance in a public subnet that has access to the
+internet so an external public IP is provisioned by default.  If you
+want to launch your server in a private subnet, you can, but your
+instance must have access to the internet via a NAT or gateway
+otherwise the instance will not be able to access the resources it
+needs to configure itself.
 
 If you do not want to provision an external IP, then set the
-PublicIpEnabled value to "false".
+PublicIpEnabled value to "false".  If you want just want to block
+in-bound traffic but still want your server in a Public subnet, then
+you might want to change the ingres rules.
+
+```
+"SecurityGroupIngress" : [
+    {
+	"IpProtocol" : "tcp",
+	"FromPort" : "80",
+	"ToPort" : "80",
+	"CidrIp" : "10.1.0.0/16"
+    },
+    {
+	"IpProtocol" : "tcp",
+	"FromPort" : "22",
+	"ToPort" : "22",
+	"CidrIp" : "10.1.0.0/16"
+    }]
+```
+
+Here, I'm only allowing traffic from within my 10.1.0.0/16 subnet to
+access my server.
 
 ### LibreOffice 5
 
@@ -471,8 +498,7 @@ If your default region was the us-east-1, then you can visit:
 
  http://mybucket.s3-website-us-east-1.amazonaws.com
 
-...and them you might want to configure the yum repository:
-
+...and then you might want to configure the yum repository:
 
 ```
 $ sudo yum-config-manager --add-repo http://mybucket.s3-website-us-east-1.amazonaws.com
