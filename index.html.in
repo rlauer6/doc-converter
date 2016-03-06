@@ -1,0 +1,14 @@
+<html>
+<body>
+
+<a href="https://github.com/rlauer6/doc-converter"><code>doc-converter</code> on GitHub</a>
+<hr>
+<ul>
+  <li><a href="/doc-converter-@PACKAGE_VERSION@-@PROJECT_RELEASE@.noarch.rpm">doc-converter-@PACKAGE_VERSION@-@PROJECT_RELEASE@..noarch.rpm</a></li>
+  <li><a href="/doc-converter-client-@PACKAGE_VERSION@-@PROJECT_RELEASE@.noarch.rpm">doc-converter-client-@PACKAGE_VERSION@-@PROJECT_RELEASE@.noarch.rpm</a></li>
+  <li><a href="/doc-converter-utils-@PACKAGE_VERSION@-@PROJECT_RELEASE@.noarch.rpm">doc-converter-utils-@PACKAGE_VERSION@-@PROJECT_RELEASE@.noarch.rpm</a></li>
+</ul>
+<hr>
+<address>@PACKAGE@ @PACKAGE_VERSION@-@PROJECT_RELEASE@ &copy; 2016 Robert C. Lauer, All rights reserved.</address>
+</body>
+</html>
