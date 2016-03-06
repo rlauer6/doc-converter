@@ -67,10 +67,11 @@ something like this:
 
 ```
 
-Your clients push documents to your S3 bucket and then request a
-conversion service via an HTTP endpoint.  The server reads the bucket
-and converts the documents.  The client can then retrieve the PDF
-and/or .png files.
+Your clients push documents to your S3 bucket (more on permissions
+here later) and then request a conversion service via an HTTP
+endpoint.  The server reads the bucket and converts the documents.
+The client can then retrieve the PDF and/or .png files from the S3
+bucket.
 
 ## Architectural Considerations and Alternatives
 
@@ -82,8 +83,8 @@ objects are modified in the S3 bucket.  The S3 service can generate:
 3. a Lambda event
 
 In the the first two scenarios, we would need some subscriber to those
-events, either a queue handler of some kind that reads the SQS queue
-waiting for these events or an endpoint that handles SNS
+events, either a message queue handler of some kind that reads the SQS
+queue waiting for these events or an endpoint that handles SNS
 notifications.  In either case, we would need to provision an EC2
 instance of some sort to run our code.
 
@@ -96,18 +97,26 @@ how a Lambda function can invoke LibreOffice!
 In the end, I decided to implement a very simple store and request
 model. The client stores the document to a bucket shared between the
 client and server and then explicitly tells the server to do
-something.  This model only required a small Perl CGI that forks and
+something.  This explicit request, which can be made when the document
+is pushed to the shared S3 bucket is low-cost (as in nearly zero) as
+compared to a generating an event placed on a queue that will need to
+be read at some frequency.
+
+The store and request model only requires a small Perl CGI that forks and
 executes LibreOffice from the command line.  While a bit unsatisfying
 from the elegance perspective it seems to do the trick reliably, if
 not quickly.
 
 While not sexy, it does support the use case I was actually interested
-in.  My client creates a document in an S3 bucket for archival and
-since I don't need the PDF or .png thumbnails right away, I'm not
-necessarily interested in waiting around for the server to complete
-those tasks.  It was sufficient for my client to store and request the
+in.  My client creates a document in an S3 bucket for both potential
+immediate needs and for archival requirements.  In general I might not
+need the PDF or .png thumbnails right away so I'm not necessarily
+interested in waiting around for the server to complete those tasks.
+
+It would then be sufficient for my client to store and request the
 conversion.  And I might have some other tasks for the server to
-perform on my files one day, so this model sort of made sense.
+perform on my files one day, so this model sort of made sense.  Of
+courrse, I could opt to wait for the conversion as well.  YMMV.
 
 I note alternative architectures for files conversions in the event
 someone out there has a niftier solution.
@@ -117,9 +126,11 @@ someone out there has a niftier solution.
 Behind the scenes, the document conversion process uses LibreOffice's
 *headless* mode from the command line.  While you can apparently run
 LibreOffice as a server in headless mode, my experience with that
-method has not been all that positive, hence this HTTP based
-conversion process pays the penalty of a **fork** and **exec** to
-execute `soffice` from the command line.
+method has not been all that positive (concurrency issues that will
+eventually crash LibreOffice - a bug has been filed against LO and
+this may in fact be fixed in 5.2) , hence this HTTP based conversion
+process pays the penalty of a **fork** and **exec** to execute
+`soffice` from the command line.
 
 Once you install the `doc-converter` RPM, take a peek at `man
 doc-converter` for more details.  You can also take a look at
@@ -141,8 +152,9 @@ I would be especially interested in anyone that has figure out whether:
 ## Summary
 
 - an EC2 instance running in a publicly available subnet
-- an IAM role that has permissions to some bucket
-- an S3 bucket
+- an S3 bucket that is readable and writable by both the client and
+  the server.  This can be achived using an IAM role that you can
+  assign to both the client and server instance
 - LibreOffice 5
 - RPM build tools (`rpm-build`)
 - `automake`
@@ -154,14 +166,15 @@ I would be especially interested in anyone that has figure out whether:
 
 The server that is used for the document converter is assumed to be an
 AWS EC2 instance prepared with the `libreoffice-doc-converter.json`
-stack template.  A *CloudFormation template*
-(`libreoffice-create-stack`) to create such a stack is
-included as part of the `doc-converter-client` RPM.  To use the stack
-creation script you'll want to make sure that:
+CloudFormation stack template.
+
+A *CloudFormation template* (`libreoffice-create-stack`) to create
+such a stack is included as part of the `doc-converter-client` RPM.
+To use the stack creation script you'll want to make sure that:
 
 * ...you're launching the stack in a subnet that has access to the
-internet.  This is necessary so that the required assets can be
-retrieved and installed.
+internet.  *This is necessary so that the required assets can be
+retrieved and installed.*
 
 * ...you take a look at the defaults defined in the CloudFormation
 JSON template and make the necessary modifications or override them on
@@ -173,7 +186,27 @@ script.  Pay attention to these parameters in the template:
   * SecurityGroup
   * Role
 
-* ...you have an IAM role configured that will allow your EC2 instance
+```
+
+usage: libreoffice-create-stack [options]
+       -e echo only - just echo the command
+       -h|? this
+       -i instance type (ex: t2.micro)
+       -I AMI (defaults to: ami-e3106686
+       -k keyname
+       -L LibreOffice version (5.1.0)
+       -l LibreOffice release (3)
+       -n server name (defaults to 'libreoffice-doc-converter')
+       -R role name (defaults to EC2 instance role)
+       -r region (defaults to us-east-1)
+       -S subnet (no default - required)
+       -s stack name (defaults to 'libreoffice-doc-converter')
+       -t template (defaults to 'libreoffice-doc-converter.json')
+       -v validate template only
+       -u url for the doc-converter RPM repo
+```
+
+* ...you have an IAM role configured that will allow your EC2 server instance
 and your client to read & write to an S3 bucket.  The bucket will be
 used by your client and the `doc-converter` service to store
 documents.  The policy for an appropriate IAM role might look like this:
@@ -220,22 +253,61 @@ use the provided script that submits the CloudFormation stack for
 creation. *To use the script you should have the AWS CLI tools installed.*
 
 ```
- $ libreoffice-create-stack -?
+ $ libreoffice-create-stack -h
 
  $ libreoffice-create-stack -t /usr/share/doc-converter/libreoffice-doc-converter.json \
                             -i t2.micro \
+			    -L 5.1.0 \
+                            -l 3 \
                             -R bucket-writer \
                             -k mykey \
+                            -S subnet-932594e4
                             -u http://doc-converter.s3-website-us-east-1.amazonaws.com
 ```
+
+**NOTE: YOU MUST HAVE PERMISSIONS TO ACTUALLY CREATE EC2 INSTANCES AND
+OTHER ASSETS IN ORDER TO RUN THE STACK CREATION SCRIPT.**
+
+### Network Considerations
+
+#### Subnet
+
+The stack has to be launched in a subnet, but which one?  The stack
+will not create it's own network or subnet, so you must provide the
+subnet id.  The script will determine the VPC that you are launching
+into from the subnet.  If you aren't using a VPC, then you'll have to
+muck with the CloudFormation script and work that out.
+
+#### Security Group
+
+By default the stack will create a security group for you.  It will
+open up ingress to ports 80 and 22.  It is assumed you are launching
+the instance in a public subnet that has access to the internet so an
+external public IP is provisioned.  If you want to launch your server
+in a private subnet, you can, but your instance must have access to
+the internet via a NAT or gateway otherwise the instance will not be
+able to be configured by accessing yum repositories.
+
+If you do not want to provision an external IP, then set the
+PublicIpEnabled value to "false".
 
 ### LibreOffice 5
 
 The stack creation process mentioned above will grab a version of
 LibreOffice 5 and install that during the instance creation.  The
-LibreOffice 5 tar ball is retrieved from a known location (the last
-known good location on the LibreOffice website) along with
-other assets required to make this process work correctly.
+LibreOffice 5 tar ball is retrieved from the LibreOffice website using
+the last known good location known good location based on the desired
+version. The LibreOffice version that by default is grabbed is 5.1.0
+release 3.  The process thinks the tarball for that release might be
+found at `http://download.documentfoundation.org` as
+`LibreOffice_5.1.0_Linux_x86-64_rpm.tar.gz`.  And that may in fact be
+true, but you can try playing with the options in the -L and -l
+options of the `libreoffice-create-stack` script if you want a
+different version of LibreOffice or it has moved since this release.
+
+Take a look at the `libreoffice-download` script to see how it attepts
+to download and eventually install LibreOffice if the stack creation
+process is failing for you.
 
 *The location of these assets might change, so you might have to
 modify the CloudFormation specification.  Again, it is suggested you
@@ -295,7 +367,18 @@ create the stack should have the AWS CLI tools.
 1. Setup the yum repository
 2. Install the client package
 3. Set your credentials
-3. Submit the CloudFormation template
+4. Submit the CloudFormation template
+
+or
+
+1. Setup the yum repository
+2. Install the client package
+3. Use the AWS console to configure the CloudFormation template
+
+The template can be found here:
+
+ http://doc-converter.s3.amazonaws.com/libreoffice-doc-converter.json
+
 
 ```
 $ sudo yum-config-manager --nogpgcheck --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
