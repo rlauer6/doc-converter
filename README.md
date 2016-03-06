@@ -21,19 +21,29 @@ however) from the quasi-official `doc-converter` yum repository:
 
 ```
 [doc-converter]
-baseurl=https://doc-converter.s3-website-us-east-1.amazonaws.com
+baseurl=http://doc-converter.s3-website-us-east-1.amazonaws.com
 name=doc-converter
 gpgcheck=0
 enabled=1
 ```
-...or
+
+...or if you want to descend into the hell that is
+`yum-config-manager` (hint: it is *very* buggy), then try this:
+
 
 ```
-$ sudo yum-config-manager --nogpgcheck --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
-$ sudo yum --nogpgcheck -y install doc-converter
-$ sudo yum --nogpgcheck -y install doc-converter-client
+$ sudo yum-config-manager --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
+$ sudo yum-config-manager --save --setopt 'doc-converter.s3-website-us-east-1.amazonaws.com.name=doc-converter' 
+$ sudo yum-config-manager --save --setopt 'doc-converter.s3-website-us-east-1.amazonaws.com.gpgcheck=0'
 
+$ sudo yum -y install doc-converter
+$ sudo yum -y install doc-converter-client
 ```
+
+P.S. The reason for setting `name` in the repo config file is so
+yum-config-manager will add the gpgcheck option.  No attempt to set
+gpgcheck with out first having gpgcheck in the file was successful
+until I hit upon this work around.
 
 # Amazon AWS Architecture
 
@@ -457,6 +467,18 @@ $ aws s3 website s3://mybucket/ --index-document index.html \
 $ ./build mybucket
 ```
 
+If your default region was the us-east-1, then you can visit:
+
+ http://mybucket.s3-website-us-east-1.amazonaws.com
+
+...and them you might want to configure the yum repository:
+
+
+```
+$ sudo yum-config-manager --add-repo http://mybucket.s3-website-us-east-1.amazonaws.com
+$ yum --disablerepp="*" --enablerepo="mybucket.s3-website-us-east-1.amazonaws.com" list available 
+```
+
 *This probably should not be the same bucket you use for document
 conversion.*
 
@@ -481,50 +503,40 @@ bloody hell", and see what the dang CloudFormation template is trying
 to do in that wonky `UserData` section and do it all by hand.
 
 ```
-"UserData"           : { "Fn::Base64" : { "Fn::Join" : ["", [
-    "#!/bin/bash -v\n",
-    "\n",
-    "# Helper function\n",
-    "function error_exit\n",
-    "{\n",
-    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", { "Ref" : "WaitHandle" }, "'\n",
-    "  exit 1\n",
-    "}\n",
-    "yum update -y\n",
-    "# Install packages\n",
-    "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocServer ", "-c Config ",
-    "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
-    "\n",
-    "# setup doc-converter repo and install package\n",
-    "yum-config-manager --nogpgcheck --add-repo ", { "Ref" : "RPMUrl" },"\n",
-    "yum install -y doc-converter\n",
-    "# Adbobe Japanese font fix\n",
-    "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
-    "# download & install LibreOffice 5\n",
-    "cd /tmp\n",
-    "wget http://download.documentfoundation.org/libreoffice/stable/5.0.3/rpm/x86_64/LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz -P /tmp\n",
-    "test -e LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz && tar xfvz LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz\n",
-    "cd LibreOffice_5.0.3.2_Linux_x86-64_rpm/RPMS/\n", 
-    "mv libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm.sav\n",
-    "rpm -Uvh *.rpm\n",
-    "\n",
-    "# set OO RecalcMode to true\n",
-    "perl /usr/libexec/fix-OOXMLRecalcMode -i /opt/libreoffice5.0/share/registry/main.xcd -p\n",
-    "chmod o+r /opt/libreoffice5.0/share/registry/main.xcd\n",
-    "/sbin/service httpd restart\n",
-    "\n",
-    "/opt/aws/bin/cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "WaitHandle" }, "'\n"
-]]}}
+     1	"UserData"           : { "Fn::Base64" : { "Fn::Join" : ["", [
+     2	    "#!/bin/bash -v\n",
+     3	    "\n",
+     4	    "# Helper function\n",
+     5	    "function error_exit\n",
+     6	    "{\n",
+     7	    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", { "Ref" : "WaitHandle" }, "'\n",
+     8	    "  exit 1\n",
+     9	    "}\n",
+    10	    "yum update -y\n",
+    11	    "# Install packages\n",
+    12	    "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocConverter ", "-c Config ",
+    13	    "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
+    14	    "\n",
+    15	    "# setup doc-converter repo and install package\n",
+    16	    "yum-config-manager --nogpgcheck --add-repo ", { "Ref" : "RPMUrl" },"\n",
+    17	    "yum install --nogpgcheck -y doc-converter\n",
+    18	    "# Adbobe Japanese font fix\n",
+    19	    "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
+    20	    "# download & install LibreOffice 5\n",
+    21	    "/usr/bin/libreoffice-download -r ",{ "Ref" : "LoRelease"}, " -v ", {"Ref" : "LoVersion"}, " || error_exit 'LibreOffice download error'\n", 
+    22	    "/sbin/service httpd restart\n",
+    23	    "\n",
+    24	    "/opt/aws/bin/cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "WaitHandle" }, "'\n"
 ```
 
 In that case, you essentially need to do the following things:
 
 1. Create an EC2 instance
 2. Install all of the *Required* RPM packages as described in the `doc-converter.spec` file.
-3. Install LibreOffice 5.0
-4. Install the `doc-converter` package
-5. Configure & restart Apache
-6. Optionally apply patches to the LibreOffice config and ghostscript files
+3. Install the `doc-converter` package (lines 16,17)
+4. Optionally apply patches to the ghostscript files to handle Japanese fonts (line 19)
+5. Install LibreOffice 5.1 (line 21)
+6. Restart Apache
 
 So, yeah, sure, you can do all those things manually, but the point of
 all of this *automation* is so that you can create multiple instances
