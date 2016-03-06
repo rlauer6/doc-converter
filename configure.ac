@@ -1,4 +1,4 @@
-AC_INIT([doc-converter], [1.0.0], [rlauer6@comcast.net])
+AC_INIT([doc-converter], [1.0.1], [rlauer6@comcast.net])
 
 __poor_mans_expand_file_name () {
     _tmp_name=$1
@@ -182,6 +182,7 @@ AC_CONFIG_FILES([
     src/main/perl/cgi-bin/Makefile
     src/main/perl/lib/Makefile
     ${PACKAGE_NAME}.spec
+    index.html
 ])
 
 AC_OUTPUT
