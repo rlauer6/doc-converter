@@ -23,6 +23,7 @@ use warnings;
 use Amazon::S3;
 use Data::Dumper;
 use File::Basename;
+use File::HomeDir;
 use File::Temp qw/tempfile tempdir/;
 use HTTP::Request;
 use LWP::UserAgent;
@@ -78,12 +79,14 @@ A set of common utilities, some of which are used by both the client
 
 =head2 get_ec2_credential()
 
-Returns temporary EC2 credentials based on the role assigned to the
-instance.  If no role is assigned, returns undef.
+Returns EC2 credentials based on the role assigned to the instance. If
+no role is assigned it will attempt to read credentials from the AWS
+configuration file(s) (F<~/.aws/config>, F<~/.aws/credentials>).  If the
+subroutines can't find any credentials the t will return undef.
 
  my $creds = get_ec2_credentials();
 
-Returns a hash containing three members:
+If successful, returns a hash containing three members:
 
 =over 5
 
@@ -158,7 +161,29 @@ sub get_ec2_credentials {
       }
     }
   };
-  
+
+  # try to get creds from .aws/config
+  unless (keys %$creds) {
+    foreach my $c (qw/config credentials/ ) {
+
+      my $config = File::HomeDir->my_home . "/.aws/" . $c;
+
+      if ( -s $config ) {
+	eval {
+	  open CREDS, "<$config" or die "could not open $config " . $@;
+
+	  while ( <CREDS> ) {
+	    chomp;
+	    /aws_access_key_id\s*=\s*(.*)$/ && do { $creds->{aws_access_key_id} = $1 };
+	    /aws_secret_access_key\s*=\s*(.*)$/ && do { $creds->{aws_secret_access_key} = $1 };
+	  } 
+
+	  close CREDS;
+	};
+      }
+    }
+  }
+
   return $creds;
 }
 
