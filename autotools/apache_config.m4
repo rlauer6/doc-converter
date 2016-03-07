@@ -123,29 +123,8 @@ AC_DEFUN([APACHE_CONFIG],[
     
     AC_SUBST([apache_vhost_confdir])
 
-    dnl typical locations for configuration directory based on distro
-    AC_ARG_WITH(
-    	[apache-vhost-confdir],[  --with-apache-vhost-confdir=DIR, where Apache looks for virtual host configuration files],
-    	[apache_vhost_confdir=$withval],
-	[
-         if test -f /etc/debian_version; then
-           if test -d /etc/apache2/sites-available; then
-             apache_vhost_confdir=/etc/apache2/sites-available
-           fi
-      	 elif test -f /etc/redhat-release; then
-           if test -d /etc/httpd/conf.d; then
-             apache_vhost_confdir=/etc/httpd/conf.d
-           fi
-         else
-           apache_vhost_confdir=${sysconfdir}/httpd/conf.d
-         fi
-    	]
-        )
-    
-    AC_SUBST([apache_vhost_confdir])
 
-
-    dnl typical locations for configuration directory based on distro
+    dnl Apache's configuration directory (ex: /etc/httpd/conf)
     AC_ARG_WITH(
     	[apache-confdir],[  --with-apache-confdir=DIR, where Apache looks for virtual host configuration files],
     	[apache_confdir=$withval],
@@ -167,7 +146,6 @@ AC_DEFUN([APACHE_CONFIG],[
     	]
         )
     
-    AC_SUBST([apache_confdir])
     AC_SUBST([apache_confddir])
 
     if test -z "$apache_vhost_domain"; then
