@@ -7,7 +7,7 @@ fatal() {
     exit 1;
 }
 
-set -x
+set -x -e
 
 test -e configure.ac || fatal "error: no configure.ac - make sure you are in the project root"
 
@@ -20,11 +20,11 @@ test -d "$topdir/RPMS" || fatal "error: no RPM working directory"
 autoreconf --include=./autotools --force configure.ac || fatal "error: unable to initialize automake"
 
 ./configure --prefix=/usr \
-            --with-libreofficedir=/opt/libreoffice5.0 || fatal "error: unable to configure project"
+            --with-libreofficedir=/opt/libreoffice || fatal "error: unable to configure project"
 
 make dist || fatal "error: unable to create project distribution"
 
-rpmbuild  -tb $(ls -1  doc-converter-*.tar.gz | tail -1) || fatal "error: unable to create RPM"
+rpmbuild -tb $(ls -1  doc-converter-*.tar.gz | tail -1) || fatal "error: unable to create RPM"
 
 # build the RPM and update the S3 bucket that hold the yum repo
 test -n "$1" && BUCKET="$1"
@@ -41,7 +41,6 @@ if test -n "$BUCKET"; then
 	find $topdir/RPMS/noarch -name 'doc-converter*' -exec cp {} ${repo}/noarch \;
 
 	# get all the .rpm files from the S3 bucket and recreate the repo
-	aws s3 cp --recursive --exclude="*" --include="*.rpm" s3://$BUCKET/noarch/ ${repo}/noarch
 	createrepo $repo
 
 	# sync local repo with S3 bucket, make it PUBLIC
