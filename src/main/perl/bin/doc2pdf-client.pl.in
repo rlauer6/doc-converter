@@ -547,8 +547,6 @@ GetOptions( \%options,
 	    "key=s"
 	  ) || exit 1;
 
-logger( Dumper \%options ) if $options{debug};
-
 if ( $options{key} ) {
   if ( $options{key} =~ /([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})\/([^\/]*)$/ ) {
     $options{'document-id'} = $1;
@@ -566,6 +564,8 @@ else {
   $options{aws_access_key_id} = $options{'aws-access-key-id'};
 }
 
+logger( Dumper \%options ) if $options{debug};
+
 unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_key_id} &&
 	 defined $options{bucket} && defined $options{host} ) {
 
@@ -578,6 +578,12 @@ unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_
 
 # just get status, no filename to convert
 unless ( @ARGV ) {
+
+  unless (exists $options{'document-id'} ) {
+    print STDERR "error: no file to convert and no document-id to status\n";
+    exit 1;
+  }
+
   my $status = get_status( %options );
 
   print to_json( $status, { pretty => 1 } ) if $status;
