@@ -1,0 +1,28 @@
+This is the INSTALL file for the `doc-converter project`.  It describes
+how you can install the software to a target server.
+
+In general, See the `README` file since it contains information that
+will show you how this service works and how to create a `doc-converter`
+server.
+
+Installing the software, entails installing the rpms on the client
+and/or servers that you are preparing.  If you want to build the
+project manually without creating rpms you should take a look at the
+`README.md` file.
+
+The `doc-converter` client software is typically done by installing
+the rpm:
+
+  $ sudo yum-config-manager --add-repo http://doc-converter.s3-website-us-east-1.amazonaws.com
+  $ sudo yum-config-manager --save --setopt 'doc-converter.s3-website-us-east-1.amazonaws.com.name=doc-converter' 
+  $ sudo yum-config-manager --save --setopt 'doc-converter.s3-website-us-east-1.amazonaws.com.gpgcheck=0'
+
+  $ sudo yum -y install doc-converter
+
+Creating the `doc-converter` server is a bit more involved and is
+typically done as part of a CloudFormation automated script.  It is
+possible however to perform all of the steps of preparing a
+`doc-converter` server by hand.
+
+
+See `README.md` for all of the gory details.
