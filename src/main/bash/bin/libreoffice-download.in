@@ -1,0 +1,121 @@
+#!@bashrun@
+
+# download and prepare LibreOffice
+
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+help () {
+    echo "usage: libreoffice-download [options]"
+    echo "       -h|? this"
+    echo "       -r release (ex: 3)"
+    echo "       -v version (ex: 5.1.0)"
+
+    exit 1;
+}
+
+download () {
+
+# this seemed to be the format of the tarball in recent versions
+    lo_tarball="LibreOffice_${LO_VERSION}_Linux_x86-64_rpm.tar.gz"
+    
+# so this seemed to be the URL fabricated for the tarball
+    lo_url="http://${lo_base_url}/${LO_VERSION}/rpm/x86_64/${lo_tarball}"
+    
+    test -s /tmp/${lo_tarball} || wget ${lo_url} -P /tmp
+    
+    if test -e /tmp/${lo_tarball}; then
+	cd /tmp
+
+	tar xfvz ${lo_tarball}
+
+	if [ $(id -u) != "0" ]; then
+	    echo "must be root" >&2
+	    exit 1;
+	fi
+
+	if test -d "LibreOffice_${LO_VERSION}.${LO_RELEASE}_Linux_x86-64_rpm/RPMS/"; then
+ 	    cd LibreOffice_${LO_VERSION}.${LO_RELEASE}_Linux_x86-64_rpm/RPMS/
+	    for a in libobasis*gnome*; do mv $a $a.sav; done
+            rpm -Uvh *.rpm
+        # set OO RecalcMode to true
+	    mainxcd="/opt/libreoffice${LO_VERSION_SHORT}/share/registry/main.xcd"
+	    if test -s "$mainxcd"; then
+		perl /usr/libexec/fix-OOXMLRecalcMode -i $mainxcd -p
+		chmod o+r $mainxcd
+		ln -s /opt/libreoffice${LO_VERSION_SHORT} /opt/libreoffice
+	    else
+		echo "could not find $mainxcd after install" >&2
+		exit 1;
+	    fi
+	else
+	    echo "could not find directory LibreOffice_${LO_VERSION}.${LO_RELEASE}_Linux_x86-64_rpm/RPMS/ after untarring $lo_tarball" >&2
+	    exit 1;
+	fi
+    else
+	echo "$lo_tarball could not be downloaded" >&2
+	exit 1;
+    fi
+
+    return 0;
+}
+
+set -e -x
+
+lo_base_url=download.documentfoundation.org/libreoffice/stable
+
+OPTS=$(getopt -o hv:r: -- "$@")
+
+if [[ $? -ne 0 ]]; then
+    help;
+    exit $?
+fi
+
+eval set -- "$OPTS"
+
+while [ $# -gt 0 ]; do
+
+    case "$1" in
+
+	-v )
+	    LO_VERSION="$2"
+	    shift 2;
+	    LO_VERSION_SHORT=${LO_VERSION%\.[0-9]*}
+	    ;;
+
+	-r )
+	    LO_RELEASE="$2"
+	    shift 2;
+	    ;;
+	    
+	-- ) 
+	    shift 1;
+	    if test -z "$1"; then
+		download;
+	    else
+		help;
+	    fi
+	    break;
+	    ;;
+
+	* )
+	    help;
+	    break;
+	    ;;
+    esac
+done
+
+exit 0;
