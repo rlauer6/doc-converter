@@ -45,7 +45,7 @@ $ sudo yum -y install doc-converter-client
 `gpgcheck` with out first having `gpgcheck` in the file was successful
 until I hit upon this work around.*
 
-# `doc-converter' Architecture
+# `doc-converter` Architecture
 
 The `doc-converter` service employs your S3 bucket as a document
 repository.  Both the `doc-converter` client and server use the S3
