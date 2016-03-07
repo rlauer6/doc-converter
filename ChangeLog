@@ -1,5 +1,13 @@
 2016-03-07 Rob Lauer <rlauer6@comcast.net>
 
+	RELEASED: doc-converter 1.0.1-2
+
+	* ChangeLog: new
+	* INSTALL: new
+	* COPYRIGHT.txt: new
+	* LICENSE.txt: new
+	* Added generated files to project
+
 2016-03-06 Rob Lauer <rlauer6@comcast.net>
 
 	[revisiting ease of deployment]:
