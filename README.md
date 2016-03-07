@@ -333,10 +333,10 @@ access my server.
 The stack creation process mentioned above will grab a version of
 LibreOffice 5 and install that during the instance creation.  The
 LibreOffice 5 tar ball is retrieved from the LibreOffice website using
-the last known good location known good location based on the desired
-version. The LibreOffice version that by default is grabbed is 5.1.0
-release 3.  The process thinks the tarball for that release might be
-found at `http://download.documentfoundation.org` as
+the last known good location based on the desired version. The
+LibreOffice version that is downloaded by default is 5.1.0 release 3.
+The process thinks the tarball for that release might be found at
+`http://download.documentfoundation.org` as
 `LibreOffice_5.1.0_Linux_x86-64_rpm.tar.gz`.  And that may in fact be
 true, but you can try playing with the options in the -L and -l
 options of the `libreoffice-create-stack` script if you want a
