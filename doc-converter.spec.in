@@ -73,7 +73,7 @@ rm -rf %{buildroot}
             --enable-rpm-build-mode \
 	    --sysconfdir=/etc \
             --prefix=/usr \
-            --with-libreofficedir=/opt/libreoffice5.0
+            --with-libreofficedir=/opt/libreoffice
 
 %install
 make DESTDIR=%{buildroot} install
@@ -81,6 +81,7 @@ make DESTDIR=%{buildroot} install
 %files
 %defattr(-,root,root)
 /usr/bin/doc2pdf
+/usr/bin/libreoffice-download
 
 /usr/libexec/fix-OOXMLRecalcMode
 
