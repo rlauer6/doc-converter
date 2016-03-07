@@ -35,6 +35,7 @@ help () {
     echo "       -t template (defaults to 'libreoffice-doc-converter.json')"
     echo "       -v validate template only"
     echo "       -u url for the doc-converter RPM repo"
+}
 
 set_defaults() {
     test -z "$StackName" && StackName='libreoffice-doc-converter'
@@ -60,8 +61,10 @@ create_stack() {
 
     set_defaults;
 
-    echo "SubnetId is required!" >&2
-    exit 1;
+    if test -z "$SubnetId"; then
+	echo "SubnetId is required!" >&2
+	exit 1;
+    fi
 
     get_vpc_id;
 
@@ -82,7 +85,7 @@ create_stack() {
     fi
 }
 
-OPTS=$(getopt -o ehvL:l:r:i:k:u:s:t:R: -- "$@")
+OPTS=$(getopt -o ehvL:l:r:i:k:u:s:t:R:S: -- "$@")
 
 if [[ $? -ne 0 ]]; then
     help;
