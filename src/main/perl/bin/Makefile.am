@@ -81,7 +81,12 @@ tags: $(PERLSCRIPTS) \
 
 all:
 
-CLEANFILES = $(GPERLSCRIPTS) $(GMANPAGES) $(GUTILITIES)
+CLEANFILES = \
+    $(GPERLSCRIPTS) \
+    $(GMANPAGES) \
+    $(GUTILITIES) \
+    doc2pdf-client \
+    fix-OOXMLRecalcMode
 
 .PHONY: clean-local
 clean-local:
