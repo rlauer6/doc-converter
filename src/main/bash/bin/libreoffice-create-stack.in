@@ -19,33 +19,51 @@
 
 help () {
     echo "usage: libreoffice-create-stack [options]"
+
+    echo "       -e echo only - just echo the command"
     echo "       -h|? this"
     echo "       -i instance type (ex: t2.micro)"
-    echo "       -R role name (defaults to EC2 instance role)"
-    echo "       -s stack name (defaults to 'libreoffice-doc-converter')"
-    echo "       -r region (defaults to us-east-1)"
-    echo "       -t template (defaults to 'libreoffice-doc-converter.json')"
-    echo "       -n server name (defaults to 'libreoffice-doc-converter')"
-    echo "       -v validate template only"
+    echo "       -I AMI (defaults to: ami-e3106686"
     echo "       -k keyname"
+    echo "       -L LibreOffice version (5.1.0)"
+    echo "       -l LibreOffice release (3)"
+    echo "       -n server name (defaults to 'libreoffice-doc-converter')"
+    echo "       -R role name (defaults to EC2 instance role)"
+    echo "       -r region (defaults to us-east-1)"
+    echo "       -S subnet (no default - required)"
+    echo "       -s stack name (defaults to 'libreoffice-doc-converter')"
+    echo "       -t template (defaults to 'libreoffice-doc-converter.json')"
+    echo "       -v validate template only"
     echo "       -u url for the doc-converter RPM repo"
-    echo "       -e echo only - just echo the command"
-}
 
 set_defaults() {
     test -z "$StackName" && StackName='libreoffice-doc-converter'
     test -z "$Template" && Template='libreoffice-doc-converter.json'
     test -z "$Region" && Region='us-east-1'
     test -z "$Role" && Role='bucket-writer'
+    test -z "AmiId" && AmiId='ami-e3106686'
     test -z "$ServerName" && ServerName='libreoffice-doc-converter'
     test -z "$InstanceType" && InstanceType='t2.micro'
     test -z "$RPMUrl" && RPMUrl=ParameterKey=RPMUrl,ParameterValue=http://doc-converter.s3-website-us-east-1.amazonaws.com
     test -z "$KeyName" && echo "warning: you probably want to specify a key name"
+    test -z "$LoVersion" && LoVersion=5.1.0"
+    test -z "$LoRelease" && LoRelease=3"
+}
+
+get_vpc_id () {
+    if test -n "$SubnetId"; then
+	VpcId=$(aws ec2 describe-subnets --region $Region --query "Subnets[?SubnetId==\`$SubnetId\`].VpcId" --output text)
+    fi
 }
 
 create_stack() {
 
     set_defaults;
+
+    echo "SubnetId is required!" >&2
+    exit 1;
+
+    get_vpc_id;
 
     if test -n "$VALIDATE"; then
 	aws cloudformation validate-template --template-body=file://$Template --region=$Region
@@ -54,12 +72,17 @@ create_stack() {
             --stack-name="$StackName" \
             --template-body=file://$Template \
             --region="$Region" \
-            --parameters ParameterKey=EC2Role,ParameterValue=$Role ParameterKey=ServerName,ParameterValue=$ServerName ParameterKey=InstanceType,ParameterValue=$InstanceType $RPMUrl $KeyName \
+            --parameters ParameterKey=EC2Role,ParameterValue=$Role ParameterKey=ServerName,ParameterValue=$ServerName \
+                         ParameterKey=InstanceType,ParameterValue=$InstanceType \
+                         ParameterKey=SubnetId,ParameterValue=$SubnetId ParameterKey=VpcId,ParameterValue=$VpcId \
+                         ParameterKey=ImageId,ParameterValue=$AmiId \
+                         ParameterKey=LoVersion,ParameterValue=$LoVersion ParameterKey=LoRelease,ParameterValue=$LoRelease \
+                         $RPMUrl $KeyName \
             --capabilities=CAPABILITY_IAM
     fi
 }
 
-OPTS=$(getopt -o ehvr:i:k:u:s:t:R: -- "$@")
+OPTS=$(getopt -o ehvL:l:r:i:k:u:s:t:R: -- "$@")
 
 if [[ $? -ne 0 ]]; then
     help;
@@ -117,8 +140,28 @@ while [ $# -gt 0 ]; do
 	    shift 2;
 	    ;;
 
+	-S )
+	    SubnetId=$2
+	    shift 2;
+	    ;;
+
 	-n ) 
 	    ServerName=$2
+	    shift 2;
+	    ;;
+
+	-L ) 
+	    LoVersion=$2
+	    shift 2;
+	    ;;
+
+	-l ) 
+	    LoRelease=$2
+	    shift 2;
+	    ;;
+
+	-I ) 
+	    AmiId=$2
 	    shift 2;
 	    ;;
 
