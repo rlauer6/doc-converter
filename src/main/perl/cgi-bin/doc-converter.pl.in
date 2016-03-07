@@ -463,6 +463,13 @@ sub convert_document {
   
   # retrieve document from cloud
   my $infile = get_from_s3($bucket, $document_id, $file_to_convert);
+
+  my $result;
+
+  unless ( $infile && -s $infile ) {
+    $result->{error} = $args->{s3}->errstr;
+  }
+
   $t->{s3_time} = tv_interval($t1, [gettimeofday]);
   $t1 = [gettimeofday];
 
@@ -474,12 +481,12 @@ sub convert_document {
   logger("outfile: $outfile");
   logger("infile: $infile");
 
-  my $result = {
-		'document-id' => $args->{'document-id'},
-		pid           => $$
-	       };
-
-  if ( $args->{pdf} ) {
+ $result = {
+	    'document-id' => $args->{'document-id'},
+	    pid           => $$
+	   };
+  
+  if ( $args->{pdf} && $infile && -s $infile ) {
     # create PDF
     my $cmd = sprintf("%s %s %s", $config->{helpers}->{doc2pdf}, $infile, $outfile);
 
@@ -627,8 +634,7 @@ elsif ( $ENV{REQUEST_METHOD} eq 'GET' ) {
   #   /converter/pid?document-id&bucket=
 
   if ( $ENV{PATH_INFO} =~ /converter\/(.*?)\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})(\/\d+|\/)?$/ ) {
-    $args->{bucket} = $1;
-    $args->{'document-id'} = $2;
+    $args->{bucket} = $1;    $args->{'document-id'} = $2;
     $args->{pid} = (split "/", $3)[1] if $3;
   }
   elsif ( $ENV{PATH_INFO} =~ /converter\/([0-9A-F]{8}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{4}\-[0-9A-F]{12})(\/\d+)?$/ ) {
