@@ -1,0 +1,35 @@
+2016-03-07 Rob Lauer <rlauer6@comcast.net>
+
+2016-03-06 Rob Lauer <rlauer6@comcast.net>
+
+	[revisiting ease of deployment]:
+	* configure.ac: bump version, index.html
+	* index.html.in: new
+	* README.md: more documentation
+	* Makefile.am: CLEANFILES=index.html
+	* autotools/apache_config.m4: redundant section removed
+	* doc-converter.spec.in: libreoffice-download.in
+	* src/main/bash/bin/libreoffice-download.in: new
+	* src/main/bash/bin/Makefile.am: add above to build
+	* build
+	- sync after copies
+	- libreoffice directory symlink now to /opt/libreoffice
+	* src/main/perl/bin/doc2pdf-client.pl.in: check to make sure we	got file
+	* cloudformation/libreoffice-doc-converter.json
+	- libreoffice version
+	- +VpcId
+	- Subnet -> SubnetId
+	- +PublicIpEnabled
+	- create security group
+	- +libreoffice-download
+	- DocServer -> DocConverter
+	- +PrivateIp as an output
+	* src/main/perl/cgi-bin/doc-converter.pl.in
+	- fixed EC2 role credential case
+	- send token to S3 constructor
+	- trap upload error
+	* src/main/bash/bin/libreoffice-create-stack.in
+	- libreoffice version numbers
+	- +AmiId
+	- get the VPC id
+	- check for subnet (now required)
