@@ -558,7 +558,8 @@ if ( $options{key} ) {
 
 # if no creds on command line or in environment, see if instance has a role
 unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_key_id} ) {
-  map { $options{$_} = $_ } keys %{get_ec2_credentials()};
+  my $credentials = get_ec2_credentials();
+  map { $options{$_} = $credentials->{$_} } keys %$credentials;
 }
 
 unless ( defined $options{aws_secret_access_key} && 
@@ -598,7 +599,8 @@ if ( $ARGV[0] eq '-' ) {
 my $s3 = eval {
   Amazon::S3->new( {
 		    aws_secret_access_key => $options{aws_secret_access_key}, 
-		    aws_access_key_id     => $options{aws_access_key_id}
+		    aws_access_key_id     => $options{aws_access_key_id},
+		    token                 => $options{token}
 		   }
 		 );
 };
@@ -655,8 +657,12 @@ if ( @files_to_convert ) {
       $document_id = $options{'document-id'};
     }
     
-    put_to_s3($bucket, $document_id, $file);
-    
+    my $rsp = put_to_s3($bucket, $document_id, $file);
+    unless ( $rsp ) {
+      print STDERR "error: " . $s3->errstr();
+      exit;
+    }
+
     logger("sent $document_id/$file to s3") if $options{verbose};
 
     my $result = convert_document( 
