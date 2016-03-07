@@ -5,15 +5,17 @@
 
     "Parameters" : {
 	"InstanceType"       : { "Type" : "String", "Default" : "t2.micro" },
+	"LoVersion"          : { "Type" : "String", "Default" : "5.1.0" },
+	"LoRelease"          : { "Type" : "String", "Default" : "3" },
 	"Region"             : { "Type" : "String", "Default" : "us-east" },
-	"AvailabilityZone"   : { "Type" : "String", "Default" : "us-east-1a" },
-	"Subnet"             : { "Type" : "String", "Default" : "subnet-932594e4" },
+	"SubnetId"           : { "Type" : "String", "Default" : "mySubnetId" },
+	"VpcId"              : { "Type" : "String" ,"Default" : "myVpcId" },
 	"ImageId"            : { "Type" : "String", "Default" : "ami-e3106686" },
-	"SecurityGroup"      : { "Type" : "String", "Default" : "sg-f3e50197" }, 
-	"KeyName"            : { "Type" : "String", "Default" : "mykey" },
+	"KeyName"            : { "Type" : "String", "Default" : "myKey" },
 	"ServerName"         : { "Type" : "String", "Default" : "libreoffice-doc-converter" },
 	"EC2Role"            : { "Type" : "String", "Default" : "bucket-writer" },
-	"RPMUrl"             : { "Type" : "String", "Default" : "http://doc-converter.s3-website-us-east-1.amazonaws.com/doc-converter-1.0.0-0.noarch.rpm" }
+	"RPMUrl"             : { "Type" : "String", "Default" : "http://doc-converter.s3-website-us-east-1.amazonaws.com/" },
+	"PublicIpEnabled"    : { "Type" : "String", "Default" : "true" }
     },
 
     "Resources" : {
@@ -24,8 +26,36 @@
 		"Roles" : [{ "Ref" : "EC2Role"}]
             }
         },
-	
-        "DocServer": {  
+
+	"DocConverterSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "doc-converter security group",
+		"VpcId" : { "Ref" : "VpcId" },
+                "Tags"  : [ { "Key" : "Name", "Value" : "sg-doc-converter"} ],
+		"SecurityGroupIngress" : [
+		    {
+			"IpProtocol" : "tcp",
+			"FromPort" : "80",
+			"ToPort" : "80",
+			"CidrIp" : "0.0.0.0/0"
+		    },
+		    {
+			"IpProtocol" : "tcp",
+			"FromPort" : "22",
+			"ToPort" : "22",
+			"CidrIp" : "0.0.0.0/0"
+		    }],
+		"SecurityGroupEgress" : [
+		    {
+			"IpProtocol" : "tcp",
+			"FromPort" : "-1",
+			"ToPort" : "-1",
+			"CidrIp" : "0.0.0.0/0"
+		    }]
+	    }
+	},
+        "DocConverter": {  
             "Type": "AWS::EC2::Instance",
             "Metadata" : {
                 "Comment1" : "Install packages and fonts",
@@ -49,11 +79,11 @@
 
 		"NetworkInterfaces" : [
 		    {
-			"GroupSet"                 : [ { "Ref" : "SecurityGroup" } ],
-			"AssociatePublicIpAddress" : "true",
+			"GroupSet"                 : [ { "Fn::GetAtt" : [ "DocConverterSecurityGroup", "GroupId" ]} ],
+			"AssociatePublicIpAddress" : { "Ref" : "PublicIpEnabled" },
 			"DeviceIndex"              : "0",
 			"DeleteOnTermination"      : "true",
-			"SubnetId"                 : { "Ref" : "Subnet" }
+			"SubnetId"                 : { "Ref" : "SubnetId" }
 		    }
 		],
                 "ImageId"            : { "Ref" : "ImageId" },
@@ -72,7 +102,7 @@
                     "}\n",
 		    "yum update -y\n",
                     "# Install packages\n",
-                    "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocServer ", "-c Config ",
+                    "/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r DocConverter ", "-c Config ",
                     "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
                     "\n",
 		    "# setup doc-converter repo and install package\n",
@@ -81,16 +111,7 @@
 		    "# Adbobe Japanese font fix\n",
 		    "cat /usr/share/doc-converter/cidfmap.local >> /etc/ghostscript/8.70/cidfmap.local\n",
 		    "# download & install LibreOffice 5\n",
-		    "cd /tmp\n",
-                    "wget http://download.documentfoundation.org/libreoffice/stable/5.0.3/rpm/x86_64/LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz -P /tmp\n",
-                    "test -e LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz && tar xfvz LibreOffice_5.0.3_Linux_x86-64_rpm.tar.gz\n",
-                    "cd LibreOffice_5.0.3.2_Linux_x86-64_rpm/RPMS/\n", 
-                    "mv libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm libobasis5.0-gnome-integration-5.0.3.2-2.x86_64.rpm.sav\n",
-                    "rpm -Uvh *.rpm\n",
-                    "\n",
-                    "# set OO RecalcMode to true\n",
-                    "perl /usr/libexec/fix-OOXMLRecalcMode -i /opt/libreoffice5.0/share/registry/main.xcd -p\n",
-                    "chmod o+r /opt/libreoffice5.0/share/registry/main.xcd\n",
+		    "/usr/bin/libreoffice-download -r ",{ "Ref" : "LoRelease"}, " -v ", {"Ref" : "LoVersion"}, " || error_exit 'LibreOffice download error'\n", 
 		    "/sbin/service httpd restart\n",
                     "\n",
                     "/opt/aws/bin/cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "WaitHandle" }, "'\n"
@@ -104,7 +125,7 @@
 
         "WaitCondition" : {
             "Type" : "AWS::CloudFormation::WaitCondition",
-            "DependsOn" : "DocServer",
+            "DependsOn" : "DocConverter",
             "Properties" : {
                 "Handle" : {"Ref" : "WaitHandle"},
                 "Timeout" : "600"
@@ -113,13 +134,16 @@
     },
     
     "Outputs" : {
-        "DocServerIp" : { 
-	    "Value" : { "Fn::GetAtt" : [ "DocServer", "PublicIp" ] },
+        "DocConverterIp" : { 
+	    "Value" : { "Fn::GetAtt" : [ "DocConverter", "PrivateIp" ] },
+	    "Description" : "Private IP of instance"
+	},
+	"DocConverterPublicIp" : {
+	    "Value" : { "Fn::GetAtt" : [ "DocConverter", "PublicIp" ] },
 	    "Description" : "Public IP of instance"
 	},
-
         "WebsiteURL" : {
-	    "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "DocServer", "PublicIp" ]}]] },
+	    "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "DocConverter", "PrivateIp" ]}]] },
 	    "Description" : "URL for newly created doc-converter"
         }
     }
