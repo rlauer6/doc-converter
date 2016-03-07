@@ -42,7 +42,7 @@ set_defaults() {
     test -z "$Template" && Template='libreoffice-doc-converter.json'
     test -z "$Region" && Region='us-east-1'
     test -z "$Role" && Role='bucket-writer'
-    test -z "AmiId" && AmiId='ami-e3106686'
+    test -z "$AmiId" && AmiId=ParameterKey=ImageId,ParameterValue="$AmiId"
     test -z "$ServerName" && ServerName='libreoffice-doc-converter'
     test -z "$InstanceType" && InstanceType='t2.micro'
     test -z "$RPMUrl" && RPMUrl=ParameterKey=RPMUrl,ParameterValue=http://doc-converter.s3-website-us-east-1.amazonaws.com
@@ -78,9 +78,8 @@ create_stack() {
             --parameters ParameterKey=EC2Role,ParameterValue=$Role ParameterKey=ServerName,ParameterValue=$ServerName \
                          ParameterKey=InstanceType,ParameterValue=$InstanceType \
                          ParameterKey=SubnetId,ParameterValue=$SubnetId ParameterKey=VpcId,ParameterValue=$VpcId \
-                         ParameterKey=ImageId,ParameterValue=$AmiId \
                          ParameterKey=LoVersion,ParameterValue=$LoVersion ParameterKey=LoRelease,ParameterValue=$LoRelease \
-                         $RPMUrl $KeyName \
+                         $AmiId $RPMUrl $KeyName \
             --capabilities=CAPABILITY_IAM
     fi
 }
