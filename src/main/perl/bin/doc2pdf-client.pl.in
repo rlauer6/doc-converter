@@ -557,20 +557,21 @@ if ( $options{key} ) {
 }
 
 # if no creds on command line or in environment, see if instance has a role
-unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_key_id} ) {
+unless ( defined $options{'aws-secret-access-key'} && defined $options{'aws-access-key-id'} ) {
   my $credentials = get_ec2_credentials();
   map { $options{$_} = $credentials->{$_} } keys %$credentials;
 }
+else {
+  $options{aws_secret_access_key} = $options{'aws-secret-access-key'};
+  $options{aws_access_key_id} = $options{'aws-access-key-id'};
+}
 
-unless ( defined $options{aws_secret_access_key} && 
-	 defined $options{aws_access_key_id} &&
-	 defined $options{bucket} &&
-	 defined $options{host}
-       ) {
+unless ( defined $options{aws_secret_access_key} && defined $options{aws_access_key_id} &&
+	 defined $options{bucket} && defined $options{host} ) {
 
-  print STDERR "error: no credentials" unless $options{aws_secret_access_key} && $options{aws_access_key_id};
-  print STDERR "error: no bucket defined" unless $options{bucket};
-  print STDERR "error: no host defined" unless $options{host};
+  print STDERR "error: no credentials\n\n" unless $options{aws_secret_access_key} && $options{aws_access_key_id};
+  print STDERR "error: no bucket defined\n\n" unless $options{bucket};
+  print STDERR "error: no host defined\n\n" unless $options{host};
 
   usage();
 }
@@ -600,7 +601,7 @@ my $s3 = eval {
   Amazon::S3->new( {
 		    aws_secret_access_key => $options{aws_secret_access_key}, 
 		    aws_access_key_id     => $options{aws_access_key_id},
-		    token                 => $options{token}
+		    exists $options{token} ? ('token', $options{token}) : ()
 		   }
 		 );
 };
