@@ -7,6 +7,19 @@
 	* COPYRIGHT.txt: new
 	* LICENSE.txt: new
 	* Added generated files to project
+	* src/main/perl/lib/DocConverter/Utils.pm.in
+	(get_ec2_credentials): .aws/config, .aws/credentials
+	* src/main/perl/bin/doc2pdf-client.pl.in
+	- aws_secret_access_key, aws_access_key_id
+	- don't send token if no token
+	* src/main/bash/bin/libreoffice-create-stack.in
+	- -n, not -z for $AmiId
+	- do not send ImageId if not set
+	- set OPTS for -S
+	- missing } in function help()
+	- test for subnet id and exit only if not set
+	* cloudformation/libreoffice-doc-converter.json
+	- set egress to ALL
 
 2016-03-06 Rob Lauer <rlauer6@comcast.net>
 
