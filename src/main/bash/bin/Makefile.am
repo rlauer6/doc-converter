@@ -8,7 +8,9 @@ bashrun = @BASHRUN@
 
 BASHSCRIPTS = \
     doc2pdf.in \
-    libreoffice-create-stack.in
+    libreoffice-create-stack.in \
+    libreoffice-download.in
+
 
 GBASHSCRIPTS = $(BASHSCRIPTS:.in=)
 
