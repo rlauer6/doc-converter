@@ -12,6 +12,7 @@
 	* src/main/perl/bin/doc2pdf-client.pl.in
 	- aws_secret_access_key, aws_access_key_id
 	- don't send token if no token
+	- check for file or document-id
 	* src/main/bash/bin/libreoffice-create-stack.in
 	- -n, not -z for $AmiId
 	- do not send ImageId if not set
