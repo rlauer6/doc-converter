@@ -12,3 +12,6 @@ ACLOCAL_AMFLAGS = -I autotools
 EXTRA_DIST = \
     doc-converter.spec.in \
     doc-converter.spec 
+
+CLEANFILES = \
+   index.hml
