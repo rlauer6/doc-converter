@@ -1,0 +1,124 @@
+#!@bashrun@
+
+# Add a role and a bucket policy that allows our doc-converter server
+# to read & write a bucket.
+
+add_policy () {
+
+    if test -z "$role_name"; then
+	echo -e "\nerror: role name is required\n" >&2
+	help;
+    fi
+
+    if test -z "$policy_name"; then
+	echo -e "\nerror: policy name is required\n" >&2
+	help;
+    fi
+
+    if test -z "$role_policy"; then
+	role_policy=@doc_converterdir@/role-policy.json
+    fi
+
+    if ! test -e "$role_policy"; then
+	echo -e "\nerror: no such file - $role_policy\n" >&2
+	help;
+    fi
+
+    if test -z "$bucket_policy"; then
+	bucket_policy=@doc_converterdir@/s3-bucket-policy.json
+    fi
+
+    if ! test -e "$bucket_policy"; then
+	echo -e "\nerror: no such file - $bucket_policy\n" >&2
+	help;
+    fi
+    
+    if test -z "$bucket_name"; then
+	echo -e "\nerror: bucket name is required\n" >&2
+	help;
+    fi
+
+    tmp_bucket_policy=$(mktemp)
+
+    trap '[ -e "$tmp_bucket_policy" ] && rm $tmp_bucket_policy' EXIT
+
+    sed "s/@BUCKET_NAME@/$bucket_name/" $bucket_policy >$tmp_bucket_policy
+
+    aws iam create-role --role $role_name \
+                        --assume-role-policy-document file://$role_policy
+
+    aws iam put-role-policy --role-name=$role_name \
+                            --policy-name=$policy_name \
+                            --policy-document=file://$tmp_bucket_policy
+}
+
+help () {
+    echo "Usage: $0 [options]"
+    echo -e "\nAdds a role that can be assumed by an EC2 instance and attachs a bucket policy"
+    echo -e "that allows the instance to read & write to a bucket\n"
+    echo -e "Options\n"
+    echo "  -h|? this"
+    echo "  -R role name"
+    echo "  -P policy name"
+    echo "  -b bucket policy file"
+    echo "  -B bucket name"
+    echo "  -r role policy file"
+
+    exit 1;
+}
+
+
+OPTS=$(getopt -o b:r:P:R:B: -- "$@")
+
+if [[ $? -ne 0 ]]; then
+    help;
+    exit $?
+fi
+
+eval set -- "$OPTS"
+
+while [ $# -gt 0 ]; do
+
+    case "$1" in
+
+	-R ) 
+	    role_name=$2
+	    shift 2;
+	    ;;
+
+	-B ) 
+	    bucket_name=$2
+	    shift 2;
+	    ;;
+
+	-r ) 
+	    role_policy=$2
+	    shift 2;
+	    ;;
+
+	-P ) 
+	    policy_name=$2
+	    shift 2;
+	    ;;
+
+	-b )
+	    bucket_policy=$2
+	    shift 2;
+	    ;;
+
+	-- ) 
+	    shift 1;
+	    if test -z "$1"; then
+		add_policy;
+	    else
+		help;
+	    fi
+	    break;
+	    ;;
+
+	* )
+	    help;
+	    break;
+	    ;;
+    esac
+done
