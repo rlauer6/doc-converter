@@ -1867,6 +1867,7 @@ do_subst_command='do_subst = sed \
   -e '"'"'s,[@]logdir[@],$(logdir),g'"'"' \
 \
   -e '"'"'s,[@]soffice[@],$(soffice),g'"'"' \
+  -e '"'"'s,[@]doc_converterdir[@],$(doc_converterdir),g'"'"' \
 \
   -e '"'"'s,[@]apache_user[@],$(apache_user),g'"'"' \
   -e '"'"'s,[@]apache_group[@],$(apache_group),g'"'"' \
