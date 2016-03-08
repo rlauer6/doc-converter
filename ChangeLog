@@ -22,6 +22,16 @@
 	* cloudformation/libreoffice-doc-converter.json
 	- set egress to ALL
 
+	[doc-converter-add-policy]:
+	* cloudformation/s3-bucket-policy-json: new
+	* cloudformation/role-policy.json: new
+	* cloudformation/Makefile.am: add above to build
+	* src/main/bash/bin/doc-converter-add-policy.in: new
+	* src/main/bash/bin/Makefile.am: add above to build
+	* directories.inc: doc_converterdir
+	* configure.ac
+	(do_subst): doc_converterdir
+
 2016-03-06 Rob Lauer <rlauer6@comcast.net>
 
 	[revisiting ease of deployment]:
