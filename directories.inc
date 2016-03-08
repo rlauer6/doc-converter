@@ -1,7 +1,8 @@
 crondir       = /etc/cron.d
 logrotatedir  = /etc/logrotate.d
 init_ddir     = /etc/init.d
-tbc_confdir   = /etc/treasurersbriefcase
+
+doc_converterdir = $(datadir)/doc-converter
 
 soffice       = $(libreofficedir)/program/soffice
 
@@ -24,19 +25,14 @@ apache_vhost_confdir = @apache_vhost_confdir@/vhosts
 # Apache Virtual Host site directories
 apache_vhost_dir          = @apache_vhost_dir@
 apache_sitedir            = $(apache_vhost_dir)/$(apache_vhost_server)
-apache_site_bedrockdir    = $(apache_sitedir)/htdocs/bedrock
-apache_site_cloud_imgdir  = $(apache_sitedir)/htdocs/cloud-img
-apache_site_bedrocklogdir = $(apache_sitedir)/logs/html
 apache_site_cachedir      = $(apache_sitedir)/cache
 apache_site_cgibindir     = $(apache_sitedir)/cgi-bin
 apache_site_configdir     = $(apache_sitedir)/config
-apache_site_config_ddir   = $(apache_sitedir)/config.d/startup
 apache_site_htdocsdir     = $(apache_sitedir)/htdocs
 apache_site_imgdir        = $(apache_sitedir)/htdocs/img
 apache_site_javascriptdir = $(apache_sitedir)/htdocs/javascript
 apache_site_cssdir        = $(apache_sitedir)/htdocs/css
 apache_site_admindir      = $(apache_sitedir)/htdocs/admin
-apache_site_admin_cgibindir = $(apache_sitedir)/htdocs/admin/cgi-bin
 apache_site_includedir    = $(apache_sitedir)/include
 apache_site_logdir        = $(apache_sitedir)/logs
 apache_site_pebblesdir    = $(apache_sitedir)/pebbles
@@ -46,4 +42,4 @@ apache_site_spooldir      = $(apache_sitedir)/spool
 apache_site_workdir       = $(apache_sitedir)/work
 apache_site_perl5libdir   = $(apache_sitedir)/share/perl5
 site_perl5libdir          = $(apache_sitedir)/share/perl5
-apache_handlersdir        = $(apache_sitedir)/share/perl5/Bedrock/Apache
+
