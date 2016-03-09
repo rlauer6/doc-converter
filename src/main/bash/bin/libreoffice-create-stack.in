@@ -18,28 +18,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 help () {
-    echo "usage: libreoffice-create-stack [options]"
-
-    echo "       -e echo only - just echo the command"
-    echo "       -h|? this"
-    echo "       -i instance type (ex: t2.micro)"
-    echo "       -I AMI (defaults to: ami-e3106686"
-    echo "       -k keyname"
-    echo "       -L LibreOffice version (5.1.0)"
-    echo "       -l LibreOffice release (3)"
-    echo "       -n server name (defaults to 'libreoffice-doc-converter')"
-    echo "       -R role name (defaults to EC2 instance role)"
-    echo "       -r region (defaults to us-east-1)"
-    echo "       -S subnet (no default - required)"
-    echo "       -s stack name (defaults to 'libreoffice-doc-converter')"
-    echo "       -t template (defaults to 'libreoffice-doc-converter.json')"
-    echo "       -v validate template only"
-    echo "       -u url for the doc-converter RPM repo"
+    echo "Usage: libreoffice-create-stack [options]"
+    echo -e "\n Creates an EC2 instance provisioned with the doc-converter server."
+    echo -e "\n Options"
+    echo      " -------"
+    echo "   -e echo only - just echo the command"
+    echo "   -h|? this"
+    echo "   -i instance type (ex: t2.micro)"
+    echo "   -I AMI (defaults to: ami-e3106686"
+    echo "   -k keyname for access to the EC2 server created"
+    echo "   -L LibreOffice version (5.1.0)"
+    echo "   -l LibreOffice release (3)"
+    echo "   -n server name (defaults to 'libreoffice-doc-converter')"
+    echo "   -R role name (defaults to EC2 instance role)"
+    echo "   -r region (defaults to us-east-1)"
+    echo "   -S subnet (no default - required)"
+    echo "   -s stack name (defaults to 'libreoffice-doc-converter')"
+    echo "   -t template (defaults to '@doc_converterdir@/libreoffice-doc-converter.json')"
+    echo "   -v validate template only"
+    echo "   -u url for the doc-converter RPM repo"
 }
 
 set_defaults() {
     test -z "$StackName" && StackName='libreoffice-doc-converter'
-    test -z "$Template" && Template='libreoffice-doc-converter.json'
+    test -z "$Template" && Template='@doc_converterdir@/libreoffice-doc-converter.json'
     test -z "$Region" && Region='us-east-1'
     test -z "$Role" && Role='bucket-writer'
     test -n "$AmiId" && AmiId=ParameterKey=ImageId,ParameterValue="$AmiId"
@@ -47,8 +49,8 @@ set_defaults() {
     test -z "$InstanceType" && InstanceType='t2.micro'
     test -z "$RPMUrl" && RPMUrl=ParameterKey=RPMUrl,ParameterValue=http://doc-converter.s3-website-us-east-1.amazonaws.com
     test -z "$KeyName" && echo "warning: you probably want to specify a key name"
-    test -z "$LoVersion" && LoVersion=5.1.0"
-    test -z "$LoRelease" && LoRelease=3"
+    test -z "$LoVersion" && LoVersion="5.1.0"
+    test -z "$LoRelease" && LoRelease="3"
 }
 
 get_vpc_id () {
