@@ -3,6 +3,21 @@
 # Add a role and a bucket policy that allows our doc-converter server
 # to read & write a bucket.
 
+# Copyright (C) 2015 Robert C. Lauer <rlauer6@comcast.net>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
 add_policy () {
 
     if test -z "$role_name"; then
@@ -10,9 +25,10 @@ add_policy () {
 	help;
     fi
 
+    # if no policy name given, then just append -policy to the role
+    # name
     if test -z "$policy_name"; then
-	echo -e "\nerror: policy name is required\n" >&2
-	help;
+	policy_name="$role_name-policy"
     fi
 
     if test -z "$role_policy"; then
@@ -36,6 +52,15 @@ add_policy () {
     if test -z "$bucket_name"; then
 	echo -e "\nerror: bucket name is required\n" >&2
 	help;
+    else
+	if ! $AWS s3api head-bucket --bucket $bucket_name 2>/dev/null; then
+	    if test -z "$force"; then
+		echo "warning: bucket \"$bucket_name\" does not exist! Use -f to force operation." >&2
+		exit 1;
+	    else
+		echo "warning: bucket \"$bucket_name\" does not exist! Proceeding..." >&2
+	    fi
+	fi
     fi
 
     tmp_bucket_policy=$(mktemp)
@@ -43,32 +68,52 @@ add_policy () {
     trap '[ -e "$tmp_bucket_policy" ] && rm $tmp_bucket_policy' EXIT
 
     sed "s/@BUCKET_NAME@/$bucket_name/" $bucket_policy >$tmp_bucket_policy
+    
+    role_name_rsp=$($AWS iam create-role \
+                             --role $role_name \
+                             --assume-role-policy-document file://$role_policy \
+                             --query Role.RoleName --output text 2>/tmp/create-role.log)
 
-    aws iam create-role --role $role_name \
-                        --assume-role-policy-document file://$role_policy
-
-    aws iam put-role-policy --role-name=$role_name \
-                            --policy-name=$policy_name \
-                            --policy-document=file://$tmp_bucket_policy
+    if [ "$role_name_rsp" = "$role_name" ]; then
+	$AWS iam put-role-policy --role-name=$role_name \
+            --policy-name=$policy_name \
+            --policy-document=file://$tmp_bucket_policy
+    else
+	echo "error: could not create role $role_name (see: /tmp/create-role.log)" >&2
+	exit 1;
+    fi
 }
 
 help () {
     echo "Usage: $0 [options]"
     echo -e "\nAdds a role that can be assumed by an EC2 instance and attachs a bucket policy"
     echo -e "that allows the instance to read & write to a bucket\n"
-    echo -e "Options\n"
-    echo "  -h|? this"
+    echo -e " Example: doc-converter-add-role -R foo -B foo-bucket\n"
+    echo -e " Required Options"
+    echo    " ----------------"
     echo "  -R role name"
-    echo "  -P policy name"
-    echo "  -b bucket policy file"
-    echo "  -B bucket name"
-    echo "  -r role policy file"
+    echo "  -B bucket name (use -f if the bucket does not exist yet)"
+    echo -e "\n Options"
+    echo      " -------"
+    echo "  -P policy name (defaults to {role-name}-policy)"
+    echo "  -b bucket policy file (defaults to @doc_converterdir@/s3-bucket-policy.json)"
+    echo "  -r role policy file (defaults to @docu_converterdir@/role-policy.json)"
+    echo "  -f force operation even if bucket does not yet exist"
+    echo -e "  -h|? this\n"
 
     exit 1;
 }
 
 
-OPTS=$(getopt -o b:r:P:R:B: -- "$@")
+AWS=$(which aws 2>/dev/null)
+
+# check to make sure the AWS tools are installed
+if test -z "$AWS"; then
+    echo "error: AWS CLI tools are not installed" >&2
+    exit 1;
+fi
+
+OPTS=$(getopt -o fb:r:P:R:B: -- "$@")
 
 if [[ $? -ne 0 ]]; then
     help;
@@ -80,6 +125,11 @@ eval set -- "$OPTS"
 while [ $# -gt 0 ]; do
 
     case "$1" in
+
+	-f ) 
+	    shift 1;
+	    force="force"
+	    ;;
 
 	-R ) 
 	    role_name=$2
