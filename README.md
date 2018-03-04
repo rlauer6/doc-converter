@@ -45,6 +45,13 @@ $ sudo yum -y install doc-converter-client
 `gpgcheck` with out first having `gpgcheck` in the file was successful
 until I hit upon this work around.*
 
+Once you install the `doc-converter-client` RPM I highly encourage you
+to read the man page for the document conversion client.
+
+```
+ $ man doc2pdf-client
+```
+
 # `doc-converter` Architecture
 
 The `doc-converter` service employs your S3 bucket as a document
@@ -269,14 +276,12 @@ creation. *To use the script you should have the AWS CLI tools installed.*
 ```
  $ libreoffice-create-stack -h
 
- $ libreoffice-create-stack -t /usr/share/doc-converter/libreoffice-doc-converter.json \
-                            -i t2.micro \
+ $ libreoffice-create-stack -i t2.micro \
 			    -L 5.1.0 \
                             -l 3 \
                             -R bucket-writer \
                             -k mykey \
                             -S subnet-932594e4
-                            -u http://doc-converter.s3-website-us-east-1.amazonaws.com
 ```
 
 **NOTE: YOU MUST HAVE PERMISSIONS TO ACTUALLY CREATE EC2 INSTANCES AND
@@ -296,13 +301,13 @@ for yourself.  You should be using a VPC ;-)
 #### Security Group
 
 By default the stack will create it's own security group.  It will
-open up ingress to ports 80 and 22 only.  It is assumed you are
-launching the instance in a public subnet that has access to the
-internet so an external public IP is provisioned by default.  If you
-want to launch your server in a private subnet, you can, but your
-instance must have access to the internet via a NAT or gateway
-otherwise the instance will not be able to access the resources it
-needs to configure itself.
+open up ingress to ports 80 and 22 only.  You should make sure that
+you are launching the instance in a public subnet that has access to
+the internet.  An external public IP is provisioned by default.  If
+you want to launch your server in a private subnet, you can, but your
+instance still must have access to the internet via a NAT or gateway
+otherwise the instance will not be able to access the resources (rpms)
+it needs to configure itself.
 
 If you do not want to provision an external IP, then set the
 PublicIpEnabled value to "false".  If you want just want to block
@@ -315,17 +320,17 @@ you might want to change the ingres rules.
 	"IpProtocol" : "tcp",
 	"FromPort" : "80",
 	"ToPort" : "80",
-	"CidrIp" : "10.1.0.0/16"
+	"CidrIp" : "10.0.1.0/16"
     },
     {
 	"IpProtocol" : "tcp",
 	"FromPort" : "22",
 	"ToPort" : "22",
-	"CidrIp" : "10.1.0.0/16"
+	"CidrIp" : "10.0.1.0/16"
     }]
 ```
 
-Here, I'm only allowing traffic from within my 10.1.0.0/16 subnet to
+Here, I'm only allowing traffic from within my 10.0.1.0/16 subnet to
 access my server.
 
 ### LibreOffice 5
@@ -517,7 +522,7 @@ CloudFormation template.
 
 
 ```
-$ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro \
+$ libreoffice-create-stack -k mac-book -R bucket-writer -i t2.micro 
                            -t /usr/share/doc-converter/libreoffice-doc-converter.json \
                            -u http://mybucket.s3-website-us-east-1.amazonaws.com
 ```

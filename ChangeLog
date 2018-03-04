@@ -1,6 +1,20 @@
-2016-03-07 Rob Lauer <rlauer6@comcast.net>
+2016-03-08 Rob Lauer <rlauer6@comcast.net>
 
 	RELEASED: doc-converter 1.0.1-2
+	* src/main/bash/bin/doc-converter-add-role.in
+	- set default policy name if not provided
+	- check to see if bucket exists
+	- check for AWS CLI tools
+	- added -f (force) option
+	* src/main/bash/bin/libreoffice-create-stack.in
+	- quotes in LO version vars
+	- full path of template
+	- help tweaks
+	* src/main/perl/bin/doc2pdf-client.pl.in: more pod
+	* README.md: more documentation
+
+2016-03-07 Rob Lauer <rlauer6@comcast.net>
+
 
 	* ChangeLog: new
 	* INSTALL: new

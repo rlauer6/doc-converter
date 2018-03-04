@@ -108,6 +108,37 @@ In other words, we first allow the listing of all buckets in the S3
 account and then we provide specific permissions for a specific
 bucket.
 
+A utility for creating an appropriate role and and policy is provided
+for you as part of this project.  The role can then be assigned to the
+`doc-converter` server during the stack creation phase so that it has
+access to the S3 bucket used to store documents.  In this way, you do
+not need to provision access credentials for the document conversion
+server.
+
+If you have the AWS CLI tools installed and you have sufficient
+privileges to do things like provision new servers and create roles
+and policies, then you can try this:
+
+Create a bucket:
+
+ $ aws s3 mb s3://mybucket
+
+Add an appropriate role:
+
+ $ doc-converter-add-role -R bucket-writer -B mybucket
+
+Provision the document conversion server:
+
+ $ libreoffice-create-stack -k mykey -R bucket-writer -S subnet-6033e039
+
+Take a look at:
+
+ $ doc-convert-add-role -h
+
+...and
+
+ $ libreoffice-create-stack -h
+
 C<doc2pdf-client> will send one or more files to the bucket for you,
 but the client utility can be used to just POST the request or just
 GET the status of the conversion.
@@ -171,11 +202,11 @@ object that contains the details of the conversion.
 
 =head1 BUCKETS and DOCUMENT-IDs
 
-As explained previously the client and server should have access the
-S3 bucket (objects in the bucket) one way or another.  Using roles and
-policies is one way to achieve this.  ItE<039>s a good practice to
-give your conversion server just enough rights to do his job and no
-more, hence the bucket policy and role approach.
+As explained previously the client and server should have permissions
+to access the S3 bucket.  Using roles and policies is one way to
+achieve this.  ItE<039>s a good practice to give your conversion
+server just enough rights to do his job and no more, hence the bucket
+policy and role approach described previously.
 
 The C<doc-converter> assumes (and requires) that each document use
 a GUID prefix or what we term a I<document-id>.  GUIDs as they are
@@ -215,15 +246,16 @@ utility C<uuid>.
 
 =head1 OPTIONS
 
-
 The C<doc2pdf-client> scripts accepts several options, some of which
 are required, one way or another.
 
 =head2 AWS Credentials
 
-Since weE<039>re going to be sending
-a file to an S3 bucket, you naturally need to have your AWS account
-keys handy.  There are three ways you can provide these:
+Since weE<039>re going to be sending a file to an S3 bucket, you
+naturally need to have your AWS account keys handy or your EC2
+instance that is storing the document needs to have a role the permits
+uploading a document to the bucket.  There are four ways you can
+provide your AWS credentials to the client.
 
 =over 5
 
@@ -245,6 +277,8 @@ keys handy.  There are three ways you can provide these:
 
 =item AWS_SECRET_ACCESS_KEY
 
+=back
+
 =item 3. As temporary credentials from the role of your EC2 instance
 
 If the first two methods fail, then the script will attempt to see if
@@ -255,7 +289,7 @@ IAM credentials see:
 
 L<http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html>
 
-=back
+=item 4. In your F<~/.aws/config> or F<~/.aws/credentials> files.
 
 =back
 
@@ -270,7 +304,7 @@ times.  The C<--thumb> option takes a string of the form:
 ...representing the width and height of the thumbnail image.  A
 C<.png> file is created from the first page (default) of the PDF for
 each thumbnail you request and placed in the same bucket as the
-PDF. The page image is shrunken to the size indicated with the aspect
+PDF. The page image is resized to the size indicated with the aspect
 ratio of the page preserved.
 
 Example:
@@ -318,7 +352,7 @@ HereE<039>s a list of valid MIME types to use:
 
 By default, the C<doc2pdf-client> script polls the service after
 submitting the request until the conversion process has been
-completed, an error is encountered, or a timout occurs. You can use
+completed, an error is encountered, or a timeout occurs. You can use
 the C<--timeout> option to set the polling timeout value in seconds.
 The default is 60 seconds.  If you want the client to merely submit
 the file and the request and you are not interested in determining the

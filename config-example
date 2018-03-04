@@ -1,0 +1,5 @@
+./configure --with-apache-vhost-dir=/var/www \
+            --with-apache-vhost-domain='' \
+            --with-apache-vhost-server='' \
+            --prefix=/usr \
+            --with-libreofficedir=/opt/libreoffice

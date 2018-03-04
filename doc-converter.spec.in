@@ -107,11 +107,14 @@ Client components for the doc-converter
 %defattr(-, root, root)
 
 /usr/bin/libreoffice-create-stack
+/usr/bin/doc-converter-add-role
 
 /usr/libexec/doc2pdf-client
 
 /usr/share/man/man1/doc2pdf-client.1dc.gz
 /usr/share/doc-converter/libreoffice-doc-converter.json
+/usr/share/doc-converter/role-policy.json
+/usr/share/doc-converter/s3-bucket-policy.json
 
 %package utils
 

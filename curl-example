@@ -1,0 +1,2 @@
+echo '{ "file" :"foo.xlsx", "pdf": "1", "thumb" : ["70x90","400x600"], "document_id" : "A6133376-81A2-11E5-B68F-25149020DED9", "bucket" : "some-bucket" }' | \
+ curl -H 'Content-Type: plain/text' -X POST --data-binary @- http://10.0.1.198/converter
